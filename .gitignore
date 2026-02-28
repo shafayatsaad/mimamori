@@ -1,0 +1,66 @@
+# Dependencies
+node_modules/
+/.pnp
+.pnp.*
+
+# Package manager logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Test outputs
+/coverage/
+/lighthouse-reports/
+/tests/
+jest.config.js
+jest.setup.js
+lighthouse.config.js
+/scripts/lighthouse-audit.js
+
+# Next.js
+.next/
+/out/
+/build/
+.swc/
+
+# Environment
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.*.local
+
+# Database
+*.db
+
+# Deployment/platform
+/.vercel/
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# OS / editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.kiro/
+
+# Misc
+*.pem
+image.png
+nul
+ACCESSIBILITY_*.md
+KEYBOARD_NAVIGATION.md
+RESPONSIVE_IMPLEMENTATION.md
+
+# Generated
+**/generated/prisma
+
+# Amplify
+.amplify/
+amplify_outputs*
+amplifyconfiguration*

@@ -1,0 +1,27 @@
+/**
+ * Design Tokens (Theme_Config)
+ *
+ * Central source of truth for brand colors, border radii, box shadows,
+ * and animation durations. Components reference these tokens via
+ * var(--token-name) or through Tailwind utility classes mapped in
+ * tailwind.config.js.
+ *
+ * Requirements: 18.1, 18.2, 18.3
+ */
+:root {
+  /* Brand colors */
+  --color-brand-dark: #0B132B;
+  --color-brand-blue: #258bf8;
+  --color-brand-green: #10b981;
+  --color-brand-teal: #128C7E;
+
+  /* Border radii */
+  --radius-card: 2rem;
+
+  /* Box shadows */
+  --shadow-card: 0 8px 30px rgb(0, 0, 0, 0.04);
+
+  /* Animation durations */
+  --duration-fast: 150ms;
+  --duration-normal: 300ms;
+}

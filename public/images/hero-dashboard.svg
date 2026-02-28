@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 750">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f0fdf4"/>
+      <stop offset="100%" style="stop-color:#dcfce7"/>
+    </linearGradient>
+    <linearGradient id="card" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff"/>
+      <stop offset="100%" style="stop-color:#f9fafb"/>
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <rect width="1200" height="750" fill="url(#bg)" rx="24"/>
+
+  <!-- Top nav bar -->
+  <rect x="40" y="40" width="1120" height="56" rx="12" fill="white" opacity="0.9"/>
+  <circle cx="80" cy="68" r="14" fill="#00D166"/>
+  <rect x="106" y="60" width="80" height="16" rx="4" fill="#1f2937"/>
+  <rect x="900" y="56" width="80" height="24" rx="12" fill="#f3f4f6"/>
+  <rect x="998" y="56" width="100" height="24" rx="12" fill="#00D166"/>
+
+  <!-- Chart card main -->
+  <rect x="40" y="120" width="720" height="440" rx="20" fill="url(#card)" opacity="0.95"/>
+  <rect x="72" y="152" width="140" height="14" rx="4" fill="#9ca3af"/>
+  <rect x="72" y="178" width="200" height="20" rx="4" fill="#1f2937"/>
+  <!-- Chart line -->
+  <polyline points="72,420 180,370 288,390 396,330 504,280 612,300 720,240 720,440 72,440" fill="#dcfce7" opacity="0.6"/>
+  <polyline points="72,420 180,370 288,390 396,330 504,280 612,300 720,240" fill="none" stroke="#00D166" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Data points -->
+  <circle cx="504" cy="280" r="6" fill="#00D166"/>
+  <circle cx="720" cy="240" r="6" fill="#00D166"/>
+
+  <!-- Right panel cards -->
+  <rect x="800" y="120" width="360" height="130" rx="16" fill="white" opacity="0.95"/>
+  <rect x="828" y="148" width="80" height="12" rx="4" fill="#9ca3af"/>
+  <rect x="828" y="172" width="160" height="18" rx="4" fill="#1f2937"/>
+  <rect x="828" y="202" width="100" height="12" rx="4" fill="#00D166" opacity="0.7"/>
+  <!-- Pill indicator -->
+  <rect x="1054" y="144" width="80" height="26" rx="13" fill="#dcfce7"/>
+  <rect x="1066" y="152" width="56" height="10" rx="4" fill="#00D166" opacity="0.8"/>
+
+  <rect x="800" y="270" width="360" height="130" rx="16" fill="white" opacity="0.95"/>
+  <rect x="828" y="298" width="80" height="12" rx="4" fill="#9ca3af"/>
+  <rect x="828" y="322" width="140" height="18" rx="4" fill="#1f2937"/>
+  <rect x="828" y="352" width="220" height="10" rx="4" fill="#e5e7eb"/>
+  <rect x="828" y="352" width="130" height="10" rx="4" fill="#00D166"/>
+
+  <rect x="800" y="420" width="360" height="140" rx="16" fill="white" opacity="0.95"/>
+  <rect x="828" y="448" width="80" height="12" rx="4" fill="#9ca3af"/>
+  <rect x="828" y="472" width="160" height="18" rx="4" fill="#1f2937"/>
+  <rect x="828" y="502" width="200" height="10" rx="4" fill="#e5e7eb"/>
+  <rect x="828" y="502" width="80" height="10" rx="4" fill="#3b82f6"/>
+
+  <!-- Bottom bar with check -->
+  <rect x="40" y="590" width="400" height="60" rx="12" fill="white" opacity="0.9"/>
+  <circle cx="74" cy="620" r="16" fill="#00D166"/>
+  <text x="68" y="626" font-family="serif" font-size="16" fill="white">✓</text>
+  <rect x="102" y="610" width="100" height="10" rx="4" fill="#1f2937"/>
+  <rect x="102" y="628" width="160" height="8" rx="4" fill="#9ca3af"/>
+</svg>

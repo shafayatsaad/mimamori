@@ -1,0 +1,71 @@
+[
+  {
+    "promptRouterName": "Nova Prompt Router",
+    "routingCriteria": {
+      "responseQualityDifference": 0
+    },
+    "promptRouterArn": "arn:aws:bedrock:us-east-1:051826723533:default-prompt-router/amazon.nova:1",
+    "models": [
+      {
+        "modelArn": "arn:aws:bedrock:us-east-1:051826723533:inference-profile/us.amazon.nova-lite-v1:0"
+      },
+      {
+        "modelArn": "arn:aws:bedrock:us-east-1:051826723533:inference-profile/us.amazon.nova-pro-v1:0"
+      }
+    ],
+    "fallbackModel": {
+      "modelArn": "arn:aws:bedrock:us-east-1:051826723533:inference-profile/us.amazon.nova-pro-v1:0"
+    },
+    "status": "AVAILABLE",
+    "type": "default",
+    "description": "Routes requests among models in the Nova family",
+    "createdAt": "2025-04-21T07:00:00.000Z",
+    "updatedAt": "2025-04-21T07:00:00.000Z"
+  },
+  {
+    "promptRouterName": "Anthropic Prompt Router",
+    "routingCriteria": {
+      "responseQualityDifference": 0
+    },
+    "promptRouterArn": "arn:aws:bedrock:us-east-1:051826723533:default-prompt-router/anthropic.claude:1",
+    "models": [
+      {
+        "modelArn": "arn:aws:bedrock:us-east-1:051826723533:inference-profile/us.anthropic.claude-3-haiku-20240307-v1:0"
+      },
+      {
+        "modelArn": "arn:aws:bedrock:us-east-1:051826723533:inference-profile/us.anthropic.claude-3-5-sonnet-20240620-v1:0"
+      }
+    ],
+    "fallbackModel": {
+      "modelArn": "arn:aws:bedrock:us-east-1:051826723533:inference-profile/us.anthropic.claude-3-5-sonnet-20240620-v1:0"
+    },
+    "status": "AVAILABLE",
+    "type": "default",
+    "description": "Routes requests among models in the Claude family",
+    "createdAt": "2024-11-20T00:00:00.000Z",
+    "updatedAt": "2024-11-20T00:00:00.000Z"
+  },
+  {
+    "promptRouterName": "Meta Prompt Router",
+    "routingCriteria": {
+      "responseQualityDifference": 0
+    },
+    "promptRouterArn": "arn:aws:bedrock:us-east-1:051826723533:default-prompt-router/meta.llama:1",
+    "models": [
+      {
+        "modelArn": "arn:aws:bedrock:us-east-1:051826723533:inference-profile/us.meta.llama3-1-8b-instruct-v1:0"
+      },
+      {
+        "modelArn": "arn:aws:bedrock:us-east-1:051826723533:inference-profile/us.meta.llama3-1-70b-instruct-v1:0"
+      }
+    ],
+    "fallbackModel": {
+      "modelArn": "arn:aws:bedrock:us-east-1:051826723533:inference-profile/us.meta.llama3-1-70b-instruct-v1:0"
+    },
+    "status": "AVAILABLE",
+    "type": "default",
+    "description": "Routes requests among models in the LLaMA family",
+    "createdAt": "2024-11-20T00:00:00.000Z",
+    "updatedAt": "2024-11-20T00:00:00.000Z"
+  }
+]
