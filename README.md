@@ -18,6 +18,10 @@
 
 <br />
 
+![Mimamori Hero](image.png)
+
+<br />
+
 <p>
   <b>Mimamori AI</b> is a proactive healthcare monitoring platform that bridges the <b>Clinical Data Gap</b> between patient visits. By transforming natural voice logs into <b>doctor-ready clinical insights</b>, it empowers patients and provides peace of mind to caregivers through real-time AI synthesis and smart alerts.
 </p>
@@ -38,10 +42,13 @@
 - [🎯 Overview](#-overview)
 - [🚨 The Clinical Data Gap](#-the-clinical-data-gap)
 - [✨ Key Features](#-key-features)
+- [🧠 AI & Machine Learning Depth](#-ai--machine-learning-depth)
+- [🛡️ Security & Data Privacy](#️-security--data-privacy)
 - [🏗️ System Architecture](#️-system-architecture)
 - [🛠️ Tech Stack](#️-tech-stack)
+- [📖 Use Cases](#-use-cases)
 - [🚀 Getting Started](#-getting-started)
-- [🤖 AI Agent Ecosystem](#-ai-agent-ecosystem)
+- [🗺️ Roadmap](#️-roadmap)
 - [👥 Team](#-team)
 
 ---
@@ -61,7 +68,7 @@
 
 ## 🚨 The Clinical Data Gap
 
-Modern healthcare is often episodic and reactive. Mimamori solves the critical disconnects in current care models:
+Modern healthcare is often episodic and reactive. Patients spend over 8,700 hours a year outside clinical settings—hours where vital health data is lost. Mimamori solves this:
 
 | Problem | Impact | Mimamori Solution |
 |---------|--------|-------------------|
@@ -76,12 +83,41 @@ Modern healthcare is often episodic and reactive. Mimamori solves the critical d
 
 | Feature | Description |
 |---------|-------------|
-| 🗣️ **Voice Symptoms Log** | AI-powered voice capture that understands colloquial nuances. |
-| 🧬 **Clinical Synthesis** | Automated extraction of medications, conditions, and vitals. |
-| 📑 **Doctor-Ready Reports** | Comprehensive PDF health summaries with trend visualizations. |
-| ⚠️ **Smart Alerts** | Real-time notifications for pulse/oxygen anomalies or worsening trends. |
-| 🛡️ **Health Vault** | Encrypted storage for lab reports and medical prescriptions via Textract. |
-| 🤝 **Care Circle** | Transparent health monitoring for the entire patient support network. |
+| 🗣️ **Voice Symptoms Log** | AI-powered voice capture that understands colloquial nuances and non-linear speech. |
+| 🧬 **Clinical Synthesis** | Automated extraction of medications, conditions, dosages, and vitals using medical-grade NLP. |
+| 📑 **Doctor-Ready Reports** | Comprehensive PDF health summaries with longitudinal trend visualizations and anomaly detection. |
+| ⚠️ **Smart Alerts** | Real-time notifications for pulse/oxygen anomalies or worsening symptom trends using SNS/SES. |
+| 🛡️ **Health Vault** | Secure, encrypted storage for lab reports and medical prescriptions with OCR parsing via Textract. |
+| 🤝 **Care Circle** | Granular permission settings to share health updates with family and medical teams. |
+
+---
+
+## 🧠 AI & Machine Learning Depth
+
+Mimamori leverages a multi-model orchestration strategy to ensure clinical accuracy:
+
+### 1. Natural Language Processing (NLP)
+We use **Amazon Comprehend Medical** to parse unstructured voice-to-text logs. This allows us to identify:
+*   **PHM (Personal Health Metadata)**: Medications and dosages.
+*   **Anatomical Identifiers**: Locations of pain or discomfort.
+*   **Standardized Medical Codes**: Mapping to ICD-10 or RxNorm for professional review.
+
+### 2. Large Language Models (LLM)
+**Amazon Bedrock (Nova Pro/Micro)** serves as our primary reasoning engine. It:
+*   Synthesizes days/weeks of logs into concise summaries.
+*   Performs sentiment analysis to detect changes in a patient's emotional well-being—a key indicator for physical health decline.
+*   Triages entries to determine if they require immediate "Care Circle" alerts.
+
+---
+
+## 🛡️ Security & Data Privacy
+
+Patient data is treated with the highest level of security:
+
+*   **Encryption at Rest**: All sensitive health data in **DynamoDB** and **S3** is encrypted using AWS KMS.
+*   **HIPAA Alignment**: Architecture designed with HIPAA principles in mind, ensuring data isolation and audit trails.
+*   **Secure Auth**: Powered by **AWS Amplify** with multi-factor authentication (MFA) support.
+*   **Stateless Processing**: Personal Health Information (PHI) is processed dynamically and sanitized for AI model prompts.
 
 ---
 
@@ -91,16 +127,16 @@ Modern healthcare is often episodic and reactive. Mimamori solves the critical d
 graph TD
     User((User/Patient)) -->|Voice/Text| NextJS[Next.js 14 Frontend]
     NextJS -->|Auth| Amplify[AWS Amplify Auth]
-    NextJS -->|API Requests| Bedrock[Amazon Bedrock / Nova]
+    NextJS -->|AI Reasoning| Bedrock[Amazon Bedrock / Nova]
     NextJS -->|NLP Extraction| CompMed[Amazon Comprehend Medical]
     NextJS -->|OCR Analysis| Textract[Amazon Textract]
     NextJS -->|Secure Storage| S3[Amazon S3]
-    NextJS -->|State Mgmt| Dynamo[Amazon DynamoDB]
-    NextJS -->|Relational Data| SQLite[Prisma + SQLite]
+    NextJS -->|Persistent State| Dynamo[Amazon DynamoDB]
+    NextJS -->|Metadata| SQLite[Prisma + SQLite]
     Bedrock -->|Insights| NextJS
-    CompMed -->|Entities| NextJS
-    NextJS -->|Alerts| SNS[SES / SNS Notifications]
-    SNS -->|Notifications| Caregiver((Caregiver/Doctor))
+    CompMed -->|Medical Entities| NextJS
+    NextJS -->|Trigger Alerts| SNS[SES / SNS Notifications]
+    SNS -->|Alerts| Caregiver((Caregiver/Doctor))
 ```
 
 ---
@@ -109,15 +145,28 @@ graph TD
 
 | Layer | Technology | Purpose |
 |-------|------------|---------|
-| **Frontend** | Next.js 14 (App Router) | Core Application Framework |
-| **Logic** | React 18 + TypeScript | Component & State Logic |
-| **Styling** | Tailwind CSS | Modern Glassmorphism UI |
-| **Animation** | Framer Motion | Smooth Transitions & Micro-interactions |
-| **AI Engine** | Amazon Bedrock (Nova Micro/Pro) | Primary LLM Reasoning |
-| **Medical NLP** | Amazon Comprehend Medical | Clinical Entity Extraction |
-| **Document AI** | Amazon Textract | Medical Document OCR |
-| **Databases** | DynamoDB + Prisma (SQLite) | Data Persistence |
-| **Messaging** | Amazon SES / SNS | Smart Alerts & Notifications |
+| **Frontend** | Next.js 14 (App Router) | High-performance, SEO-friendly framework |
+| **Styling** | Tailwind CSS + Custom CSS | Glassmorphism & premium UI/UX |
+| **Animation** | Framer Motion | Smooth interactions and dynamic transitions |
+| **AI Layer** | Amazon Bedrock (Nova) | Reasoning, Summarization & Sentiment Analysis |
+| **Clinical NLP** | Amazon Comprehend Medical | Medical Ontology Extraction |
+| **OCR Layer** | Amazon Textract | Smart medical document parsing |
+| **Database** | DynamoDB + Prisma (SQLite) | Scalable state & relational metadata |
+| **Auth** | AWS Amplify Auth | Secure user identity management |
+| **Messaging** | Amazon SES / SNS | Instant multi-channel notifications |
+
+---
+
+## 📖 Use Cases
+
+### 1. Chronic Condition Management
+Patients with COPD, CHF, or Diabetes can log daily vitals naturally. Mimamori tracks the "delta"—the change over time—that doctors need but patients often forget.
+
+### 2. Post-Surgical Recovery
+Track recovery progress and early signs of infection or complications. The AI detects subtle language changes that might signal distress or worsening pain levels.
+
+### 3. Elderly Independent Living
+Allows seniors to live independently while keeping their family informed. "Smart Alerts" act as a safety net if a daily log is missed or shows concerning trends.
 
 ---
 
@@ -126,8 +175,8 @@ graph TD
 ### Prerequisites
 
 - Node.js 18+
-- AWS Account (Bedrock, DynamoDB access)
-- Prisma CLI
+- AWS Account (IAM permissions for Bedrock, DynamoDB, S3)
+- Prisma CLI installed globally
 
 ### Installation
 
@@ -143,28 +192,35 @@ npm install
 cp .env.example .env.local
 ```
 
+### Environment Configuration
+
+Configure your `.env.local` with the following:
+```env
+AWS_REGION=your_region
+AWS_ACCESS_KEY_ID=your_key
+AWS_SECRET_ACCESS_KEY=your_secret
+DYNAMODB_TABLE_NAME=mimamori_health_logs
+```
+
 ### Development
 
 ```bash
-# Generate Prisma Client
+# Initialize database
 npx prisma generate
+npx prisma db push
 
-# Run the dev server
+# Run development server
 npm run dev
 ```
 
-_The application will be available at `http://localhost:3000`_
-
 ---
 
-## 🤖 AI Agent Ecosystem
+## 🗺️ Roadmap
 
-Mimamori utilizes a multi-agent orchestrated system:
-
-1. **Diary Agent**: Captures and routes voice logs to appropriate handlers.
-2. **Clinical Extraction Agent**: Uses Comprehend Medical to structure raw text into medical ontologies.
-3. **Alert Specialist**: Correlates daily vitals against baseline thresholds to trigger SNS alerts.
-4. **Synthesis Agent**: Generates professional summaries for clinical review.
+- [ ] **Wearable Integration**: Direct sync with Apple HealthKit and Google Fit.
+- [ ] **Smart Home Voice Skill**: Native Alexa and Google Home versions for hands-free logging.
+- [ ] **Pharmacological Interaction Alerts**: AI-driven warnings for potential drug-drug interactions.
+- [ ] **Clinician Dashboard**: A specialized web-view tailored specifically for GP/Specialist workflow integration.
 
 ---
 
@@ -180,7 +236,7 @@ Mimamori utilizes a multi-agent orchestrated system:
     <strong>Shafayat Saad</strong>
   </a>
   <br />
-  <sub>Full-Stack Developer</sub>
+  <sub>Full-Stack Developer & AI Architect</sub>
   <br /><br />
   <a href="https://github.com/shafayatsaad">
     <img src="https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white" />
