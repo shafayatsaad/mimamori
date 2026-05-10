@@ -3,22 +3,22 @@
 ## Quick Reference
 
 - **Framework**: Next.js 14 App Router + React 18 + TypeScript + Tailwind CSS
-- **Location**: All app code is in the `Mimamori/` directory
+- **Location**: All app code is in the project root
 - **Primary DB**: AWS DynamoDB (single-table design)
-- **Secondary DB**: Prisma + SQLite (CarePlan, PromptTemplate, PermissionType, DocumentCategoryRule)
+- **Secondary DB**: Prisma + PostgreSQL (CarePlan, PromptTemplate, PermissionType, DocumentCategoryRule)
 - **AI**: Amazon Bedrock (Claude 3.5 Haiku primary, Nova fallback) + Comprehend Medical + Textract
 - **Auth**: bcrypt + JWT (jose) stored in httpOnly cookies
-- **Tests**: Vitest + fast-check, run with `npm test` from `Mimamori/`
-- **Build**: `npm run build` (prisma generate + next build) from `Mimamori/`
-- **Dev**: `npm run dev` from `Mimamori/`
+- **Tests**: Vitest + fast-check, run with `npm test`
+- **Build**: `npm run build` (prisma generate + next build)
+- **Dev**: `npm run dev`
 
 ## Project Architecture
 
-The full knowledge base with complete architecture, data models, API routes, coding conventions, and known limitations is auto-loaded via `opencode.json` from `.kiro/steering/mimamori-knowledge-base.md`.
+The project follows Next.js 14 App Router conventions with all source code at the repository root.
 
 ## Critical Conventions
 
-- Path alias: `@/*` maps to `Mimamori/*` root
+- Path alias: `@/*` maps to the project root
 - API routes follow: auth check -> rate limit -> validate -> business logic -> response
 - All AI prompts include `SYSTEM_GUARDRAIL` from `lib/ai/guardrails.ts`
 - All user text sanitized via `sanitizeForPrompt()` before AI prompts
