@@ -213,6 +213,19 @@ npx prisma db push
 npm run dev
 ```
 
+### ☁️ Deployment (Vercel)
+
+Mimamori is configured to be deployed easily on Vercel or any other Next.js-compatible hosting platform. 
+
+1. **Connect Repository**: Import the GitHub repository into your Vercel dashboard.
+2. **Setup Postgres Database**: In Vercel, navigate to the Storage tab and create a **Vercel Postgres** database. This will automatically populate the `POSTGRES_PRISMA_URL` and `POSTGRES_URL_NON_POOLING` environment variables.
+3. **AWS Environment Variables**: Add your AWS programmatic access keys in the Vercel Environment Variables section:
+   - `APP_ACCESS_KEY_ID`: Your AWS IAM User access key.
+   - `APP_SECRET_ACCESS_KEY`: Your AWS IAM User secret key.
+   - `AWS_REGION`: e.g., `us-east-1`
+   - `DYNAMODB_TABLE_NAME`: The name of your DynamoDB table.
+4. **Deploy**: Vercel will automatically run the build command (`prisma generate && next build`) and deploy the application.
+
 ---
 
 ## 🗺️ Roadmap
