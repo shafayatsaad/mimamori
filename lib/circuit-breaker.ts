@@ -10,7 +10,7 @@
  * While open, calls immediately throw without invoking the underlying function.
  */
 
-export type ServiceName = 'bedrock' | 'comprehend-medical' | 'ses' | 'dynamodb';
+export type ServiceName = 'gemini' | 'gemini-medical' | 'supabase';
 
 export interface CircuitBreakerConfig {
   failureThreshold: number; // default 5
