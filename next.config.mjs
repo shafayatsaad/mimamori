@@ -26,14 +26,8 @@ const nextConfig = {
     contentSecurityPolicy: cspDirectives,
   },
   env: {
-    APP_REGION: process.env.APP_REGION,
-    APP_S3_BUCKET_NAME: process.env.APP_S3_BUCKET_NAME,
-    APP_SES_FROM_EMAIL: process.env.APP_SES_FROM_EMAIL,
-    APP_BEDROCK_ROUTER_ARN: process.env.APP_BEDROCK_ROUTER_ARN,
-    MIMAMORI_USERS_TABLE: process.env.MIMAMORI_USERS_TABLE,
-    MIMAMORI_DATA_TABLE: process.env.MIMAMORI_DATA_TABLE,
-    APP_ACCESS_KEY_ID: process.env.APP_ACCESS_KEY_ID,
-    APP_SECRET_ACCESS_KEY: process.env.APP_SECRET_ACCESS_KEY,
+    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
     SESSION_JWT_SECRET: process.env.SESSION_JWT_SECRET,
   },
   async headers() {
