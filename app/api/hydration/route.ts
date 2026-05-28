@@ -1,11 +1,7 @@
 import { NextResponse } from 'next/server';
-import { QueryCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
-import docClient from '@/lib/dynamodb';
+import { supabase } from '@/lib/supabase-client';
 import { getConfig, getHydrationConfig } from '@/lib/config-service';
 import { validateIntakeAmount, IntakeLog } from '@/lib/hydration';
-
-
-const TABLE_NAME = getConfig().aws.dataTable;
 
 export async function GET(request: Request) {
   try {
@@ -20,38 +16,22 @@ export async function GET(request: Request) {
       );
     }
 
-    const pk = `USER#${email}`;
-    const skPrefix = `HYDRATION#${date}`;
+    const { data, error } = await supabase
+      .from('hydration_logs')
+      .select('data')
+      .eq('email', email)
+      .eq('date', date);
 
-    const result = await docClient.send(
-      new QueryCommand({
-        TableName: TABLE_NAME,
-        KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
-        ExpressionAttributeValues: {
-          ':pk': pk,
-          ':sk': skPrefix,
-        },
-      }),
-    );
+    if (error) {
+      console.error('Error fetching hydration logs:', error);
+      return NextResponse.json({ error: 'Database service unavailable' }, { status: 503 });
+    }
 
-    const logs: IntakeLog[] = (result.Items || []).map((item: any) => item.data);
+    const logs: IntakeLog[] = (data || []).map((item: any) => item.data);
 
     return NextResponse.json({ logs }, { status: 200 });
   } catch (error) {
     console.error('Hydration GET error:', error);
-
-    const errorName =
-      error && typeof error === 'object' && 'name' in error
-        ? String((error as { name?: string }).name)
-        : '';
-
-    if (errorName === 'ResourceNotFoundException') {
-      return NextResponse.json(
-        { error: `Data table '${TABLE_NAME}' was not found` },
-        { status: 503 },
-      );
-    }
-
     return NextResponse.json(
       { error: 'Internal server error fetching hydration logs' },
       { status: 500 },
@@ -102,36 +82,23 @@ export async function POST(request: Request) {
       date,
     };
 
-    const pk = `USER#${email}`;
-    const sk = `HYDRATION#${date}#${logId}`;
+    const { error: insertError } = await supabase
+      .from('hydration_logs')
+      .insert({
+        id: logId,
+        email,
+        date,
+        data: intakeLog,
+      });
 
-    await docClient.send(
-      new PutCommand({
-        TableName: TABLE_NAME,
-        Item: {
-          PK: pk,
-          SK: sk,
-          data: intakeLog,
-        },
-      }),
-    );
+    if (insertError) {
+      console.error('Error inserting hydration log:', insertError);
+      return NextResponse.json({ error: 'Database service unavailable' }, { status: 503 });
+    }
 
     return NextResponse.json({ log: intakeLog }, { status: 201 });
   } catch (error) {
     console.error('Hydration POST error:', error);
-
-    const errorName =
-      error && typeof error === 'object' && 'name' in error
-        ? String((error as { name?: string }).name)
-        : '';
-
-    if (errorName === 'ResourceNotFoundException') {
-      return NextResponse.json(
-        { error: `Data table '${TABLE_NAME}' was not found` },
-        { status: 503 },
-      );
-    }
-
     return NextResponse.json(
       { error: 'Internal server error creating hydration log' },
       { status: 500 },
