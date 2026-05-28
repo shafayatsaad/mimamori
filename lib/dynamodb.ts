@@ -1,4 +1,4 @@
-// Re-export the DynamoDB clients from centralized aws-clients
-import { docClient } from '@/lib/aws-clients';
+import { supabase } from './supabase-client';
 
-export default docClient;
+export default supabase;
+
