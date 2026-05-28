@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, beforeAll, afterAll } from 'vitest';
 import * as fc from 'fast-check';
 
 // Feature: mimamori-production-readiness, Property 6: Email retry with exponential backoff
@@ -17,19 +17,27 @@ import * as fc from 'fast-check';
 // --- Mock SES client ---
 
 const mockSend = vi.fn();
+const mockSesClient = { send: (...args: unknown[]) => mockSend(...args) };
+class MockSendEmailCommand {
+  constructor(public input: unknown) {}
+}
 
-vi.mock('@/lib/aws-clients', () => ({
-  sesClient: { send: (...args: unknown[]) => mockSend(...args) },
-}));
+beforeAll(() => {
+  (globalThis as any).sesClient = mockSesClient;
+  (globalThis as any).SendEmailCommand = MockSendEmailCommand;
+});
 
-// Import after mock is set up
+afterAll(() => {
+  delete (globalThis as any).sesClient;
+  delete (globalThis as any).SendEmailCommand;
+});
+
 import { sendEmailWithRetry } from '@/lib/email-retry';
-import type { SendEmailCommandInput } from '@aws-sdk/client-ses';
 
 // --- Helpers ---
 
 /** Minimal valid SES params for testing. */
-const DUMMY_PARAMS: SendEmailCommandInput = {
+const DUMMY_PARAMS: any = {
   Source: 'test@example.com',
   Destination: { ToAddresses: ['user@example.com'] },
   Message: {
