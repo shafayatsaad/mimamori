@@ -12,8 +12,8 @@
 [![Next.js](https://img.shields.io/badge/Next.js-14.x-000000?style=flat-square&logo=nextdotjs&logoColor=white)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-18.x-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
-[![AWS Bedrock](https://img.shields.io/badge/AWS-Bedrock-FF9900?style=flat-square&logo=amazon-aws&logoColor=white)](https://aws.amazon.com/bedrock/)
-[![DynamoDB](https://img.shields.io/badge/Amazon-DynamoDB-4053D6?style=flat-square&logo=amazondynamodb&logoColor=white)](https://aws.amazon.com/dynamodb/)
+[![Google Gemini](https://img.shields.io/badge/Google-Gemini-8E75C2?style=flat-square&logo=googlegemini&logoColor=white)](https://deepmind.google/technologies/gemini/)
+[![Supabase](https://img.shields.io/badge/Supabase-Database-3ECF8E?style=flat-square&logo=supabase&logoColor=white)](https://supabase.com/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Prisma](https://img.shields.io/badge/Prisma-ORM-2D3748?style=flat-square&logo=prisma)](https://www.prisma.io/)
 
@@ -24,7 +24,7 @@
 <br />
 
 <p>
-  <b>Mimamori AI</b> is a proactive healthcare monitoring platform that bridges the <b>Clinical Data Gap</b> between patient visits. By transforming natural voice logs into <b>doctor-ready clinical insights</b>, it empowers patients and provides peace of mind to caregivers through real-time AI synthesis and smart alerts.
+  <b>Mimamori AI</b> is a proactive healthcare monitoring platform that bridges the <b>Clinical Data Gap</b> between patient visits. By transforming natural voice logs into <b>doctor-ready clinical insights</b>, it empowers patients and provides peace of mind to caregivers through real-time AI synthesis and smart in-app alerts.
 </p>
 
 <br />
@@ -32,7 +32,6 @@
 <!-- ACTION BUTTONS -->
 [![Live Demo](https://img.shields.io/badge/🌐_Live_Demo-Visit_Site-10B981?style=for-the-badge&labelColor=1E293B)](https://mimamori-ai.com/)
 [![Star This Repo](https://img.shields.io/badge/⭐_Star_This_Repo-Support_Us-FFD700?style=for-the-badge&labelColor=1E293B)](https://github.com/shafayatsaad/mimamori)
-[![Read Article](https://img.shields.io/badge/📖_Case_Study-AWS_Builder-FF9900?style=for-the-badge&labelColor=1E293B)](https://builder.aws.com/content/3AAMRb7lRzAJnleldfYBBtfM1WG/aideas-transforming-healthcare-into-ai-powered-wellness-companion)
 
 </div>
 
@@ -56,13 +55,13 @@
 
 ## 🎯 Overview
 
-**Mimamori** (meaning "watching over" in Japanese) was built to transform how chronic conditions and daily wellness are monitored. Developed using **AWS Bedrock** and **Kiro IDE**, the platform ensures that the 99.9% of time patients spend outside of clinics is no longer a data "black box."
+**Mimamori** (meaning "watching over" in Japanese) was built to transform how chronic conditions and daily wellness are monitored. Developed using **Supabase** and **Google Gemini**, the platform ensures that the 99.9% of time patients spend outside of clinics is no longer a data "black box."
 
 ### Why Mimamori?
 
 - 🎙️ **Voice-First**: Log symptoms naturally without the friction of typing.
-- 🧠 **Medical Intelligence**: Extract clinical entities using Amazon Comprehend Medical.
-- 🔔 **Proactive Safety**: Receive smart alerts when health trends show signs of deterioration.
+- 🧠 **Medical Intelligence**: Extract clinical entities using Google Gemini AI prompting.
+- 🔔 **Proactive Safety**: Receive smart in-app notifications when health trends show signs of deterioration.
 - 👨‍👩‍👧 **Care Circle**: Seamlessly connect family, caregivers, and doctors on a single dashboard.
 
 ---
@@ -74,9 +73,9 @@ Modern healthcare is often episodic and reactive. Patients spend over 8,700 hour
 | Problem | Impact | Mimamori Solution |
 |---------|--------|-------------------|
 | ❌ **Episodic Care** | Critical symptoms missed between visits | **Continuous Logging** via voice |
-| ❌ **Recall Bias** | Patients struggle to articular symptoms to doctors | **Synthesized PDF Reports** |
+| ❌ **Recall Bias** | Patients struggle to articulate symptoms to doctors | **Synthesized PDF Reports** |
 | ❌ **Caregiver Isolation** | Family members lack real-time visibility | **Shared Care Circle Dashboard** |
-| ❌ **Unstructured Data** | Health diaries are messy and hard to analyze | **Comprehend Medical NLP Extraction** |
+| ❌ **Unstructured Data** | Health diaries are messy and hard to analyze | **Gemini Clinical NLP Entity Extraction** |
 
 ---
 
@@ -85,10 +84,10 @@ Modern healthcare is often episodic and reactive. Patients spend over 8,700 hour
 | Feature | Description |
 |---------|-------------|
 | 🗣️ **Voice Symptoms Log** | AI-powered voice capture that understands colloquial nuances and non-linear speech. |
-| 🧬 **Clinical Synthesis** | Automated extraction of medications, conditions, dosages, and vitals using medical-grade NLP. |
+| 🧬 **Clinical Synthesis** | Automated extraction of medications, conditions, dosages, and vitals using Google Gemini NLP. |
 | 📑 **Doctor-Ready Reports** | Comprehensive PDF health summaries with longitudinal trend visualizations and anomaly detection. |
-| ⚠️ **Smart Alerts** | Real-time notifications for pulse/oxygen anomalies or worsening symptom trends using SNS/SES. |
-| 🛡️ **Health Vault** | Secure, encrypted storage for lab reports and medical prescriptions with OCR parsing via Textract. |
+| ⚠️ **Smart Alerts** | Real-time in-app notifications for abnormal vitals or worsening symptom trends. |
+| 🛡️ **Health Vault** | Secure, encrypted storage for lab reports and medical prescriptions with OCR parsing via Gemini Vision. |
 | 🤝 **Care Circle** | Granular permission settings to share health updates with family and medical teams. |
 
 ---
@@ -98,13 +97,13 @@ Modern healthcare is often episodic and reactive. Patients spend over 8,700 hour
 Mimamori leverages a multi-model orchestration strategy to ensure clinical accuracy:
 
 ### 1. Natural Language Processing (NLP)
-We use **Amazon Comprehend Medical** to parse unstructured voice-to-text logs. This allows us to identify:
-*   **PHM (Personal Health Metadata)**: Medications and dosages.
+We use **Google Gemini 2.0** to parse unstructured voice-to-text logs. This allows us to identify:
+*   **PHM (Personal Health Metadata)**: Medications, frequencies, and dosages.
 *   **Anatomical Identifiers**: Locations of pain or discomfort.
-*   **Standardized Medical Codes**: Mapping to ICD-10 or RxNorm for professional review.
+*   **Structured Medical Classifications**: Organizing symptoms, treatments, and procedures.
 
 ### 2. Large Language Models (LLM)
-**Amazon Bedrock (Nova Pro/Micro)** serves as our primary reasoning engine. It:
+**Google Gemini 2.0 Flash** serves as our primary reasoning engine. It:
 *   Synthesizes days/weeks of logs into concise summaries.
 *   Performs sentiment analysis to detect changes in a patient's emotional well-being—a key indicator for physical health decline.
 *   Triages entries to determine if they require immediate "Care Circle" alerts.
@@ -115,7 +114,7 @@ We use **Amazon Comprehend Medical** to parse unstructured voice-to-text logs. T
 
 Patient data is treated with the highest level of security:
 
-*   **Encryption at Rest**: All sensitive health data in **DynamoDB** and **S3** is encrypted using AWS KMS.
+*   **Encryption at Rest**: All sensitive health data in **Supabase PostgreSQL** and **Supabase Storage** is protected with secure access controls and encrypted at rest.
 *   **HIPAA Alignment**: Architecture designed with HIPAA principles in mind, ensuring data isolation and audit trails.
 *   **Secure Auth**: Secure custom authentication system using **bcrypt** for password hashing and stateless **JWT (jose)** tokens stored in `httpOnly` cookies.
 *   **Stateless Processing**: Personal Health Information (PHI) is processed dynamically and sanitized for AI model prompts.
@@ -128,16 +127,13 @@ Patient data is treated with the highest level of security:
 graph TD
     User((User/Patient)) -->|Voice/Text| NextJS[Next.js 14 Frontend]
     NextJS -->|Auth| JWT[JWT + bcrypt Auth]
-    NextJS -->|AI Reasoning| Bedrock[Amazon Bedrock / Nova]
-    NextJS -->|NLP Extraction| CompMed[Amazon Comprehend Medical]
-    NextJS -->|OCR Analysis| Textract[Amazon Textract]
-    NextJS -->|Secure Storage| S3[Amazon S3]
-    NextJS -->|Persistent State| Dynamo[Amazon DynamoDB]
+    NextJS -->|AI Reasoning & OCR| Gemini[Google Gemini / 2.0 Flash]
+    NextJS -->|Secure Storage| Storage[Supabase Storage]
+    NextJS -->|Persistent State| Database[Supabase PostgreSQL]
     NextJS -->|Metadata| Postgres[Prisma + PostgreSQL]
-    Bedrock -->|Insights| NextJS
-    CompMed -->|Medical Entities| NextJS
-    NextJS -->|Trigger Alerts| SNS[SES / SNS Notifications]
-    SNS -->|Alerts| Caregiver((Caregiver/Doctor))
+    Gemini -->|Insights & Entities| NextJS
+    NextJS -->|Trigger Alerts| Alerts[In-App Alerts]
+    Alerts -->|Dashboard Alerts| Caregiver((Caregiver/Doctor))
 ```
 
 ---
@@ -149,12 +145,12 @@ graph TD
 | **Frontend** | Next.js 14 (App Router) | High-performance, SEO-friendly framework |
 | **Styling** | Tailwind CSS + Custom CSS | Glassmorphism & premium UI/UX |
 | **Animation** | Framer Motion | Smooth interactions and dynamic transitions |
-| **AI Layer** | Amazon Bedrock (Nova) | Reasoning, Summarization & Sentiment Analysis |
-| **Clinical NLP** | Amazon Comprehend Medical | Medical Ontology Extraction |
-| **OCR Layer** | Amazon Textract | Smart medical document parsing |
-| **Database** | DynamoDB + Prisma (PostgreSQL) | Scalable state & relational metadata |
+| **AI Layer** | Google Gemini (2.0 Flash) | Reasoning, Summarization & Sentiment Analysis |
+| **Clinical NLP** | Google Gemini NLP Prompting | Medical Entity Extraction |
+| **OCR Layer** | Google Gemini Vision | Smart medical document parsing |
+| **Database** | Supabase PostgreSQL + Prisma | Scalable relational schemas |
 | **Auth** | bcrypt + JWT (jose) | Secure cookie-based identity management |
-| **Messaging** | Amazon SES / SNS | Instant multi-channel notifications |
+| **Storage** | Supabase Storage | Encrypted medical vault for documents |
 
 ---
 
@@ -176,7 +172,8 @@ Allows seniors to live independently while keeping their family informed. "Smart
 ### Prerequisites
 
 - Node.js 18+
-- AWS Account (IAM permissions for Bedrock, DynamoDB, S3)
+- Supabase Project (Database + Storage bucket configured)
+- Google Gemini API Key from Google AI Studio
 - Prisma CLI installed globally
 
 ### Installation
@@ -197,13 +194,11 @@ cp .env.example .env.local
 
 Configure your `.env.local` based on `.env.example`. Key variables include:
 ```env
-# AWS & Infrastructure Configuration
-APP_REGION=us-west-2
-APP_S3_BUCKET_NAME=your_s3_bucket_name
-APP_SES_FROM_EMAIL=your_verified_sender_email
-APP_BEDROCK_ROUTER_ARN=your_bedrock_router_arn
-MIMAMORI_USERS_TABLE=your_users_table_name
-MIMAMORI_DATA_TABLE=your_data_table_name
+# Supabase & Gemini Configuration
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your_supabase_anon_key
+GEMINI_API_KEY=your_google_gemini_api_key
+SUPABASE_STORAGE_BUCKET=documents
 
 # Relational Database Configuration
 POSTGRES_PRISMA_URL=your_postgres_prisma_url_with_pooling
@@ -229,16 +224,11 @@ npm run dev
 Mimamori is configured to be deployed easily on Vercel or any other Next.js-compatible hosting platform. 
 
 1. **Connect Repository**: Import the GitHub repository into your Vercel dashboard.
-2. **Setup Postgres Database**: In Vercel, navigate to the Storage tab and create a **Vercel Postgres** database. This will automatically populate the `POSTGRES_PRISMA_URL` and `POSTGRES_URL_NON_POOLING` environment variables.
-3. **AWS & App Environment Variables**: Add the required environment variables in the Vercel Environment Variables section:
-   - `APP_ACCESS_KEY_ID`: Your AWS IAM User access key.
-   - `APP_SECRET_ACCESS_KEY`: Your AWS IAM User secret key.
-   - `APP_REGION`: e.g., `us-west-2`
-   - `APP_S3_BUCKET_NAME`: Your S3 bucket name.
-   - `APP_SES_FROM_EMAIL`: Your verified SES sender email.
-   - `APP_BEDROCK_ROUTER_ARN`: Your Bedrock prompt router ARN.
-   - `MIMAMORI_USERS_TABLE`: Your DynamoDB users table name.
-   - `MIMAMORI_DATA_TABLE`: Your DynamoDB health data table name.
+2. **Setup Postgres Database**: In Vercel, navigate to the Storage tab and create a **Vercel Postgres** database or connect your Supabase database.
+3. **App Environment Variables**: Add the required environment variables in the Vercel Environment Variables section:
+   - `NEXT_PUBLIC_SUPABASE_URL`: Your Supabase Project URL.
+   - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`: Your Supabase publishable anonymous key.
+   - `GEMINI_API_KEY`: Your Google Gemini API Key.
    - `SESSION_JWT_SECRET`: Secret used to sign JWT session tokens.
 4. **Deploy**: Vercel will automatically run the build command (`prisma generate && next build`) and deploy the application.
 
