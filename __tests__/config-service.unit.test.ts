@@ -13,12 +13,10 @@ let envBackup: NodeJS.ProcessEnv;
 
 beforeEach(() => {
   envBackup = { ...process.env };
-  // Set required AWS keys so getConfig() doesn't throw by default
-  process.env.APP_S3_BUCKET_NAME = 'test-bucket';
-  process.env.APP_SES_FROM_EMAIL = 'test@example.com';
-  process.env.APP_BEDROCK_ROUTER_ARN = 'arn:aws:bedrock:us-west-2:000000000000:test';
-  process.env.MIMAMORI_USERS_TABLE = 'TestUsers';
-  process.env.MIMAMORI_DATA_TABLE = 'TestData';
+  // Set required Supabase and Gemini keys so getConfig() doesn't throw by default
+  process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = 'test-pub-key';
+  process.env.GEMINI_API_KEY = 'test-gemini-key';
 });
 
 afterEach(() => {
@@ -26,16 +24,14 @@ afterEach(() => {
 });
 
 // -----------------------------------------------------------------------
-// Required AWS keys throw when unset
+// Required Supabase and Gemini keys throw when unset
 // -----------------------------------------------------------------------
 
-describe('required AWS keys', () => {
+describe('required keys', () => {
   const requiredKeys: Array<{ envVar: string; label: string }> = [
-    { envVar: 'APP_S3_BUCKET_NAME', label: 's3BucketName' },
-    { envVar: 'APP_BEDROCK_ROUTER_ARN', label: 'bedrockRouterArn' },
-    { envVar: 'APP_SES_FROM_EMAIL', label: 'sesFromEmail' },
-    { envVar: 'MIMAMORI_USERS_TABLE', label: 'usersTable' },
-    { envVar: 'MIMAMORI_DATA_TABLE', label: 'dataTable' },
+    { envVar: 'NEXT_PUBLIC_SUPABASE_URL', label: 'url' },
+    { envVar: 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY', label: 'publishableKey' },
+    { envVar: 'GEMINI_API_KEY', label: 'apiKey' },
   ];
 
   for (const { envVar, label } of requiredKeys) {
@@ -100,11 +96,11 @@ describe('optional defaults', () => {
   it('returns correct AI model defaults', () => {
     const cfg = getConfig();
     expect(cfg.ai).toEqual({
-      modelMicro: 'amazon.nova-micro-v1:0',
-      modelOrchestrator: 'anthropic.claude-3-5-haiku-20241022-v1:0',
-      modelAnalyzer: 'anthropic.claude-3-5-sonnet-20241022-v2:0',
-      modelProcessor: 'amazon.nova-pro-v1:0',
-      modelSpecialist: 'amazon.nova-premier-v1:0',
+      modelMicro: 'gemini-2.0-flash-lite',
+      modelOrchestrator: 'gemini-2.0-flash',
+      modelAnalyzer: 'gemini-2.0-flash',
+      modelProcessor: 'gemini-2.0-flash',
+      modelSpecialist: 'gemini-2.0-flash',
     });
   });
 
@@ -132,11 +128,6 @@ describe('optional defaults', () => {
   it('returns correct session defaults', () => {
     const cfg = getConfig();
     expect(cfg.session.expirySeconds).toBe(86400);
-  });
-
-  it('returns correct AWS region default', () => {
-    const cfg = getConfig();
-    expect(cfg.aws.region).toBe('us-west-2');
   });
 });
 
