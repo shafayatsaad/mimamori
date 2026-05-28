@@ -9,13 +9,14 @@
 // Types
 // ---------------------------------------------------------------------------
 
-export interface AwsConfig {
-  region: string;
-  s3BucketName: string;
-  sesFromEmail: string;
-  bedrockRouterArn: string;
-  usersTable: string;
-  dataTable: string;
+export interface SupabaseConfig {
+  url: string;
+  publishableKey: string;
+  storageBucket: string;
+}
+
+export interface GeminiConfig {
+  apiKey: string;
 }
 
 export interface SessionConfig {
@@ -70,7 +71,8 @@ export interface CspConfig {
 }
 
 export interface AppConfig {
-  aws: AwsConfig;
+  supabase: SupabaseConfig;
+  gemini: GeminiConfig;
   session: SessionConfig;
   hydration: HydrationConfig;
   weather: WeatherConfig;
@@ -188,15 +190,13 @@ const DEFAULT_CSP_DIRECTIVES = "default-src 'self'; script-src 'none'; sandbox;"
 
 export function getConfig(): AppConfig {
   return {
-    aws: {
-      region: optionalEnv('APP_REGION', 'us-west-2'),
-      // Direct process.env.X references are inlined by Next.js at build time,
-      // ensuring values are available even if the SSR runtime doesn't inject them.
-      s3BucketName: requireEnv('APP_S3_BUCKET_NAME', process.env.APP_S3_BUCKET_NAME),
-      sesFromEmail: requireEnv('APP_SES_FROM_EMAIL', process.env.APP_SES_FROM_EMAIL),
-      bedrockRouterArn: requireEnv('APP_BEDROCK_ROUTER_ARN', process.env.APP_BEDROCK_ROUTER_ARN),
-      usersTable: requireEnv('MIMAMORI_USERS_TABLE', process.env.MIMAMORI_USERS_TABLE),
-      dataTable: requireEnv('MIMAMORI_DATA_TABLE', process.env.MIMAMORI_DATA_TABLE),
+    supabase: {
+      url: requireEnv('NEXT_PUBLIC_SUPABASE_URL', process.env.NEXT_PUBLIC_SUPABASE_URL),
+      publishableKey: requireEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY', process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY),
+      storageBucket: optionalEnv('SUPABASE_STORAGE_BUCKET', 'documents'),
+    },
+    gemini: {
+      apiKey: requireEnv('GEMINI_API_KEY', process.env.GEMINI_API_KEY),
     },
     session: {
       jwtSecret: optionalEnv('SESSION_JWT_SECRET', 'mimamori-dev-secret-change-me'),
@@ -221,11 +221,11 @@ export function getConfig(): AppConfig {
       defaultTemp: optionalEnvFloat('WEATHER_DEFAULT_TEMP', 20),
     },
     ai: {
-      modelMicro: optionalEnv('AI_MODEL_MICRO', 'amazon.nova-micro-v1:0'),
-      modelOrchestrator: optionalEnv('AI_MODEL_ORCHESTRATOR', 'anthropic.claude-3-5-haiku-20241022-v1:0'),
-      modelAnalyzer: optionalEnv('AI_MODEL_ANALYZER', 'anthropic.claude-3-5-sonnet-20241022-v2:0'),
-      modelProcessor: optionalEnv('AI_MODEL_PROCESSOR', 'amazon.nova-pro-v1:0'),
-      modelSpecialist: optionalEnv('AI_MODEL_SPECIALIST', 'amazon.nova-premier-v1:0'),
+      modelMicro: optionalEnv('AI_MODEL_MICRO', 'gemini-2.0-flash-lite'),
+      modelOrchestrator: optionalEnv('AI_MODEL_ORCHESTRATOR', 'gemini-2.0-flash'),
+      modelAnalyzer: optionalEnv('AI_MODEL_ANALYZER', 'gemini-2.0-flash'),
+      modelProcessor: optionalEnv('AI_MODEL_PROCESSOR', 'gemini-2.0-flash'),
+      modelSpecialist: optionalEnv('AI_MODEL_SPECIALIST', 'gemini-2.0-flash'),
     },
     demo: {
       enabled: optionalEnvBool('DEMO_MODE', false),
