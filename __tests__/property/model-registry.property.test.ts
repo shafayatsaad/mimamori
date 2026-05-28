@@ -15,22 +15,20 @@ import { getModelId, type ModelRole } from '@/lib/ai/model-registry';
  * **Validates: Requirements 7.1**
  */
 
-/** Required AWS env vars so getConfig() doesn't throw. */
+/** Required Supabase and Gemini env vars so getConfig() doesn't throw. */
 const REQUIRED_ENV_VARS: Record<string, string> = {
-  APP_S3_BUCKET_NAME: 'test-bucket',
-  APP_BEDROCK_ROUTER_ARN: 'arn:aws:bedrock:us-west-2:000000000000:router/test',
-  APP_SES_FROM_EMAIL: 'test@example.com',
-  MIMAMORI_USERS_TABLE: 'TestUsersTable',
-  MIMAMORI_DATA_TABLE: 'TestDataTable',
+  NEXT_PUBLIC_SUPABASE_URL: 'https://example.supabase.co',
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'test-pub-key',
+  GEMINI_API_KEY: 'test-gemini-key',
 };
 
 /** Maps each model role to its env var name and default value. */
 const MODEL_ROLES: Record<ModelRole, { envVar: string; default: string }> = {
-  micro: { envVar: 'AI_MODEL_MICRO', default: 'amazon.nova-micro-v1:0' },
-  orchestrator: { envVar: 'AI_MODEL_ORCHESTRATOR', default: 'anthropic.claude-3-5-haiku-20241022-v1:0' },
-  analyzer: { envVar: 'AI_MODEL_ANALYZER', default: 'anthropic.claude-3-5-sonnet-20241022-v2:0' },
-  processor: { envVar: 'AI_MODEL_PROCESSOR', default: 'amazon.nova-pro-v1:0' },
-  specialist: { envVar: 'AI_MODEL_SPECIALIST', default: 'amazon.nova-premier-v1:0' },
+  micro: { envVar: 'AI_MODEL_MICRO', default: 'gemini-2.0-flash-lite' },
+  orchestrator: { envVar: 'AI_MODEL_ORCHESTRATOR', default: 'gemini-2.0-flash' },
+  analyzer: { envVar: 'AI_MODEL_ANALYZER', default: 'gemini-2.0-flash' },
+  processor: { envVar: 'AI_MODEL_PROCESSOR', default: 'gemini-2.0-flash' },
+  specialist: { envVar: 'AI_MODEL_SPECIALIST', default: 'gemini-2.0-flash' },
 };
 
 const ALL_ROLES: ModelRole[] = ['micro', 'orchestrator', 'analyzer', 'processor', 'specialist'];
