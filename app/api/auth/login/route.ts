@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
-import { GetCommand } from '@aws-sdk/lib-dynamodb';
-import docClient from '@/lib/dynamodb';
-import { getConfig } from '@/lib/config-service';
+import { supabase } from '@/lib/supabase-client';
 import { verifyPassword } from '@/lib/auth/password';
 import { createSession, getSessionCookieOptions } from '@/lib/auth/session';
 
@@ -20,15 +18,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // Fetch user from DynamoDB
-    const result = await docClient.send(
-      new GetCommand({
-        TableName: getConfig().aws.usersTable,
-        Key: { email },
-      })
-    );
+    // Fetch user from Supabase
+    const { data: user, error: fetchError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('email', email)
+      .maybeSingle();
 
-    const user = result.Item;
+    if (fetchError) {
+      console.error('Login database fetch error:', fetchError);
+      return NextResponse.json({ error: 'Database service unavailable' }, { status: 503 });
+    }
 
     if (!user) {
       // Generic error — don't reveal whether email exists
@@ -73,25 +73,6 @@ export async function POST(request: Request) {
 
   } catch (error) {
     console.error('Login error:', error);
-
-    const errorName = error && typeof error === 'object' && 'name' in error
-      ? String((error as { name?: string }).name)
-      : '';
-
-    if (errorName === 'ResourceNotFoundException') {
-      return NextResponse.json(
-        { error: `Users table '${getConfig().aws.usersTable}' was not found` },
-        { status: 503 }
-      );
-    }
-
-    if (errorName === 'AccessDeniedException' || errorName === 'UnrecognizedClientException') {
-      return NextResponse.json(
-        { error: 'AWS credentials/permissions are not configured for login' },
-        { status: 503 }
-      );
-    }
-
     return NextResponse.json({ error: `Internal server error: ${getErrorMessage(error)}` }, { status: 500 });
   }
 }
