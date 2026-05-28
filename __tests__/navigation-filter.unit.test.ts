@@ -6,9 +6,9 @@ import {
 } from '@/lib/navigation';
 
 describe('getNavigationItems', () => {
-  it('returns all 8 navigation items sorted by order', () => {
+  it('returns all 9 navigation items sorted by order', () => {
     const items = getNavigationItems();
-    expect(items.length).toBe(8);
+    expect(items.length).toBe(9);
     for (let i = 1; i < items.length; i++) {
       expect(items[i].order).toBeGreaterThanOrEqual(items[i - 1].order);
     }
