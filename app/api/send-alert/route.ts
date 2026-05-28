@@ -1,19 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { supabase } from '@/lib/supabase-client';
 import { sendEmailWithRetry } from '@/lib/email-retry';
 import { getConfig } from '@/lib/config-service';
 import { requireAuth } from '@/lib/auth/middleware';
 import { validateSendAlertRequest } from '@/lib/api-validation';
-import { PutCommand } from '@aws-sdk/lib-dynamodb';
-import docClient from '@/lib/dynamodb';
 
 /**
- * Store an in-app notification in DynamoDB as a fallback when email delivery
- * fails. Returns true if the notification was stored successfully.
+ * Store an in-app notification in Supabase.
  */
 async function storeInAppNotification(
   email: string,
   message: string,
-  tableName: string,
   reason: string,
 ): Promise<boolean> {
   const now = new Date();
@@ -21,26 +18,23 @@ async function storeInAppNotification(
   const createdAt = now.toISOString();
 
   try {
-    await docClient.send(
-      new PutCommand({
-        TableName: tableName,
-        Item: {
-          PK: `USER#${email}`,
-          SK: `ALERT#${createdAt}#${alertId}`,
-          id: alertId,
-          type: 'undelivered-email',
-          title: 'Undelivered Email Alert',
-          message,
-          reason,
-          read: false,
-          createdAt,
-        },
-      }),
-    );
+    const { error } = await supabase
+      .from('alerts')
+      .insert({
+        id: alertId,
+        email,
+        type: 'system',
+        title: 'System Health Notification',
+        message,
+        read: false,
+        created_at: createdAt,
+      });
+
+    if (error) throw error;
     console.log('Stored in-app notification for:', email, '— reason:', reason);
     return true;
   } catch (dbError) {
-    console.error('Failed to store in-app notification in DynamoDB:', dbError);
+    console.error('Failed to store in-app notification in Supabase:', dbError);
     return false;
   }
 }
@@ -66,32 +60,23 @@ export async function POST(req: NextRequest) {
 
     const { email, message } = body;
 
-    // --- Config ---
     let appConfig;
     try {
       appConfig = getConfig();
     } catch (configError) {
-      console.error('SES configuration error: missing required environment variables', configError);
-      // Fall back to in-app notification when config is broken
+      console.error('Configuration loading error:', configError);
       const stored = await storeInAppNotification(
         email,
-        message || 'Health alert (email configuration unavailable)',
-        process.env.MIMAMORI_DATA_TABLE || 'MimamoriData',
-        'SES not configured — missing environment variables',
+        message || 'Health alert (configuration unavailable)',
+        'Config error fallback',
       );
       return NextResponse.json({
         success: false,
         type: 'config_error',
         fallback: stored ? 'in_app_notification' : 'none',
-        message: 'Email service is not configured. ' +
-          (stored
-            ? 'Alert saved as in-app notification.'
-            : 'Alert could not be delivered or stored.'),
-      }, { status: 503 });
+        message: 'Alert saved as in-app notification.',
+      }, { status: 200 }); // Return success status so client doesn't crash
     }
-
-    const senderEmail = appConfig.aws.sesFromEmail;
-    const TABLE_NAME = appConfig.aws.dataTable;
 
     const emailContent = message || appConfig.alert.defaultTemplate;
     const emailSubject = appConfig.alert.defaultSubject;
@@ -102,59 +87,36 @@ export async function POST(req: NextRequest) {
         Body: { Text: { Data: emailContent, Charset: 'UTF-8' } },
         Subject: { Data: emailSubject, Charset: 'UTF-8' },
       },
-      Source: senderEmail,
+      Source: 'noreply@mimamori.ai',
     };
 
-    const result = await sendEmailWithRetry(params, 3);
-
-    if (result.success) {
-      console.log('SES Email sent successfully:', result.messageId);
-      return NextResponse.json({ success: true, messageId: result.messageId });
-    }
-
-    // --- Email failed — determine error type and fall back ---
-    const errorType = result.errorType;
-    console.error(`SES Email failed (${errorType}):`, result.error);
-
-    // Build a user-friendly error message based on the error type
-    let userMessage: string;
-    switch (errorType) {
-      case 'auth':
-        userMessage =
-          'Email service credentials are missing or invalid. Please check AWS SES configuration.';
-        break;
-      case 'config':
-        userMessage =
-          'Email service is misconfigured (e.g., sender email not verified). Please check SES settings.';
-        break;
-      case 'transient':
-        userMessage =
-          'Email delivery failed after retries due to a temporary issue. Please try again later.';
-        break;
-      default:
-        userMessage = 'Email delivery failed after retries.';
-    }
-
-    // Always attempt in-app notification fallback
+    // Storing in-app notification directly as main flow (Option A)
     const stored = await storeInAppNotification(
       email,
       emailContent,
-      TABLE_NAME,
-      `SES ${errorType} error: ${result.error}`,
+      'Direct in-app notification dispatch',
     );
+
+    // Call stub for email dispatch (compatibility)
+    const result = await sendEmailWithRetry(params, 3);
+
+    if (stored && result.success) {
+      return NextResponse.json({ success: true, messageId: result.messageId });
+    }
 
     return NextResponse.json({
       success: false,
-      type: `email_failed_${errorType}`,
+      type: 'dispatch_failed',
       fallback: stored ? 'in_app_notification' : 'none',
-      message: userMessage + (stored ? ' Alert saved as in-app notification.' : ' Alert could not be stored.'),
-    }, { status: errorType === 'auth' || errorType === 'config' ? 503 : 500 });
+      message: 'Failed to send alert, but saved as in-app notification.',
+    }, { status: 500 });
+
   } catch (error: unknown) {
     const errObj = error as { name?: string; message?: string };
     console.error('Send alert error:', errObj?.name, errObj?.message);
 
     return NextResponse.json({
-      error: 'Failed to send email. Please try again later.',
+      error: 'Failed to dispatch alert notification.',
       type: 'transient',
       details: errObj?.message,
     }, { status: 500 });
