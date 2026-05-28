@@ -16,11 +16,9 @@ import { createSessionWithExpiry, verifySession } from '@/lib/auth/session';
 
 beforeAll(() => {
   // Set required env vars so getConfig() doesn't throw
-  process.env.APP_S3_BUCKET_NAME = 'test-bucket';
-  process.env.APP_BEDROCK_ROUTER_ARN = 'arn:aws:bedrock:us-west-2:000000000000:router/test';
-  process.env.APP_SES_FROM_EMAIL = 'test@example.com';
-  process.env.MIMAMORI_USERS_TABLE = 'TestUsers';
-  process.env.MIMAMORI_DATA_TABLE = 'TestData';
+  process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = 'test-pub-key';
+  process.env.GEMINI_API_KEY = 'test-gemini-key';
   process.env.SESSION_JWT_SECRET = 'test-secret-for-property-tests';
 });
 
