@@ -41,6 +41,13 @@ vi.mock('@/lib/config-service', () => ({
   }),
 }));
 
+vi.mock('@/lib/auth/middleware', () => ({
+  requireAuth: vi.fn().mockResolvedValue({
+    authenticated: true,
+    user: { sub: 'user@test.com', name: 'Test User', role: 'patient' },
+  }),
+}));
+
 function setupDynamoMock() {
   mockDocClientSend.mockImplementation((command: { input: Record<string, unknown>; constructor: { name: string } }) => {
     const cmdName = command.constructor.name;
