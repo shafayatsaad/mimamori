@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
-import { QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
-import docClient from '@/lib/dynamodb';
-import { getConfig } from '@/lib/config-service';
+import { supabase } from '@/lib/supabase-client';
 
 function getErrorMessage(error: unknown) {
   if (error && typeof error === 'object' && 'message' in error) {
@@ -11,13 +9,7 @@ function getErrorMessage(error: unknown) {
 }
 
 /**
- * PATCH /api/alerts/[id]/read — mark an alert as read in DynamoDB.
- *
- * Body fields:
- *   - email (required): the user's email address
- *
- * The alert's SK is discovered by querying for ALERT# items matching the id.
- * Requirements: 9.5
+ * PATCH /api/alerts/[id]/read — mark an alert as read in Supabase.
  */
 export async function PATCH(
   request: Request,
@@ -36,61 +28,26 @@ export async function PATCH(
       return NextResponse.json({ error: 'Missing alert id' }, { status: 400 });
     }
 
-    const TABLE_NAME = getConfig().aws.dataTable;
-    const pk = `USER#${email}`;
+    // Update the alert's read flag in Supabase directly
+    const { data, error } = await supabase
+      .from('alerts')
+      .update({ read: true })
+      .eq('id', id)
+      .eq('email', email)
+      .select();
 
-    // Find the alert's full SK by querying ALERT# items for this user
-    const queryResult = await docClient.send(
-      new QueryCommand({
-        TableName: TABLE_NAME,
-        KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
-        ExpressionAttributeValues: {
-          ':pk': pk,
-          ':skPrefix': 'ALERT#',
-        },
-      }),
-    );
-
-    const alertItem = (queryResult.Items || []).find((item) => item.id === id);
-
-    if (!alertItem) {
-      return NextResponse.json({ error: 'Alert not found' }, { status: 404 });
+    if (error) {
+      console.error('Error marking alert as read:', error);
+      return NextResponse.json({ error: 'Database service unavailable' }, { status: 503 });
     }
 
-    // Update the alert's read flag
-    await docClient.send(
-      new UpdateCommand({
-        TableName: TABLE_NAME,
-        Key: {
-          PK: pk,
-          SK: alertItem.SK,
-        },
-        UpdateExpression: 'SET #read = :read',
-        ExpressionAttributeNames: {
-          '#read': 'read',
-        },
-        ExpressionAttributeValues: {
-          ':read': true,
-        },
-      }),
-    );
+    if (!data || data.length === 0) {
+      return NextResponse.json({ error: 'Alert not found' }, { status: 404 });
+    }
 
     return NextResponse.json({ message: 'Alert marked as read' }, { status: 200 });
   } catch (error) {
     console.error('PATCH /api/alerts/[id]/read error:', error);
-
-    const errorName =
-      error && typeof error === 'object' && 'name' in error
-        ? String((error as { name?: string }).name)
-        : '';
-
-    if (errorName === 'ResourceNotFoundException') {
-      return NextResponse.json(
-        { error: 'Data table not found' },
-        { status: 503 },
-      );
-    }
-
     return NextResponse.json(
       { error: `Internal server error: ${getErrorMessage(error)}` },
       { status: 500 },
