@@ -14,6 +14,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 [![AWS Bedrock](https://img.shields.io/badge/AWS-Bedrock-FF9900?style=flat-square&logo=amazon-aws&logoColor=white)](https://aws.amazon.com/bedrock/)
 [![DynamoDB](https://img.shields.io/badge/Amazon-DynamoDB-4053D6?style=flat-square&logo=amazondynamodb&logoColor=white)](https://aws.amazon.com/dynamodb/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Prisma](https://img.shields.io/badge/Prisma-ORM-2D3748?style=flat-square&logo=prisma)](https://www.prisma.io/)
 
 <br />
@@ -116,7 +117,7 @@ Patient data is treated with the highest level of security:
 
 *   **Encryption at Rest**: All sensitive health data in **DynamoDB** and **S3** is encrypted using AWS KMS.
 *   **HIPAA Alignment**: Architecture designed with HIPAA principles in mind, ensuring data isolation and audit trails.
-*   **Secure Auth**: Powered by **AWS Amplify** with multi-factor authentication (MFA) support.
+*   **Secure Auth**: Secure custom authentication system using **bcrypt** for password hashing and stateless **JWT (jose)** tokens stored in `httpOnly` cookies.
 *   **Stateless Processing**: Personal Health Information (PHI) is processed dynamically and sanitized for AI model prompts.
 
 ---
@@ -126,13 +127,13 @@ Patient data is treated with the highest level of security:
 ```mermaid
 graph TD
     User((User/Patient)) -->|Voice/Text| NextJS[Next.js 14 Frontend]
-    NextJS -->|Auth| Amplify[AWS Amplify Auth]
+    NextJS -->|Auth| JWT[JWT + bcrypt Auth]
     NextJS -->|AI Reasoning| Bedrock[Amazon Bedrock / Nova]
     NextJS -->|NLP Extraction| CompMed[Amazon Comprehend Medical]
     NextJS -->|OCR Analysis| Textract[Amazon Textract]
     NextJS -->|Secure Storage| S3[Amazon S3]
     NextJS -->|Persistent State| Dynamo[Amazon DynamoDB]
-    NextJS -->|Metadata| SQLite[Prisma + SQLite]
+    NextJS -->|Metadata| Postgres[Prisma + PostgreSQL]
     Bedrock -->|Insights| NextJS
     CompMed -->|Medical Entities| NextJS
     NextJS -->|Trigger Alerts| SNS[SES / SNS Notifications]
@@ -151,8 +152,8 @@ graph TD
 | **AI Layer** | Amazon Bedrock (Nova) | Reasoning, Summarization & Sentiment Analysis |
 | **Clinical NLP** | Amazon Comprehend Medical | Medical Ontology Extraction |
 | **OCR Layer** | Amazon Textract | Smart medical document parsing |
-| **Database** | DynamoDB + Prisma (SQLite) | Scalable state & relational metadata |
-| **Auth** | AWS Amplify Auth | Secure user identity management |
+| **Database** | DynamoDB + Prisma (PostgreSQL) | Scalable state & relational metadata |
+| **Auth** | bcrypt + JWT (jose) | Secure cookie-based identity management |
 | **Messaging** | Amazon SES / SNS | Instant multi-channel notifications |
 
 ---
@@ -194,12 +195,22 @@ cp .env.example .env.local
 
 ### Environment Configuration
 
-Configure your `.env.local` with the following:
+Configure your `.env.local` based on `.env.example`. Key variables include:
 ```env
-AWS_REGION=your_region
-AWS_ACCESS_KEY_ID=your_key
-AWS_SECRET_ACCESS_KEY=your_secret
-DYNAMODB_TABLE_NAME=mimamori_health_logs
+# AWS & Infrastructure Configuration
+APP_REGION=us-west-2
+APP_S3_BUCKET_NAME=your_s3_bucket_name
+APP_SES_FROM_EMAIL=your_verified_sender_email
+APP_BEDROCK_ROUTER_ARN=your_bedrock_router_arn
+MIMAMORI_USERS_TABLE=your_users_table_name
+MIMAMORI_DATA_TABLE=your_data_table_name
+
+# Relational Database Configuration
+POSTGRES_PRISMA_URL=your_postgres_prisma_url_with_pooling
+POSTGRES_URL_NON_POOLING=your_postgres_direct_url
+
+# Authentication / Session
+SESSION_JWT_SECRET=your_jwt_signing_secret
 ```
 
 ### Development
@@ -219,11 +230,16 @@ Mimamori is configured to be deployed easily on Vercel or any other Next.js-comp
 
 1. **Connect Repository**: Import the GitHub repository into your Vercel dashboard.
 2. **Setup Postgres Database**: In Vercel, navigate to the Storage tab and create a **Vercel Postgres** database. This will automatically populate the `POSTGRES_PRISMA_URL` and `POSTGRES_URL_NON_POOLING` environment variables.
-3. **AWS Environment Variables**: Add your AWS programmatic access keys in the Vercel Environment Variables section:
+3. **AWS & App Environment Variables**: Add the required environment variables in the Vercel Environment Variables section:
    - `APP_ACCESS_KEY_ID`: Your AWS IAM User access key.
    - `APP_SECRET_ACCESS_KEY`: Your AWS IAM User secret key.
-   - `AWS_REGION`: e.g., `us-east-1`
-   - `DYNAMODB_TABLE_NAME`: The name of your DynamoDB table.
+   - `APP_REGION`: e.g., `us-west-2`
+   - `APP_S3_BUCKET_NAME`: Your S3 bucket name.
+   - `APP_SES_FROM_EMAIL`: Your verified SES sender email.
+   - `APP_BEDROCK_ROUTER_ARN`: Your Bedrock prompt router ARN.
+   - `MIMAMORI_USERS_TABLE`: Your DynamoDB users table name.
+   - `MIMAMORI_DATA_TABLE`: Your DynamoDB health data table name.
+   - `SESSION_JWT_SECRET`: Secret used to sign JWT session tokens.
 4. **Deploy**: Vercel will automatically run the build command (`prisma generate && next build`) and deploy the application.
 
 ---
