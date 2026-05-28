@@ -51,6 +51,17 @@ vi.mock('@/lib/config-service', () => ({
   }),
 }));
 
+vi.mock('@/lib/auth/middleware', () => ({
+  requireAuth: vi.fn().mockResolvedValue({
+    authenticated: true,
+    user: { sub: 'user@test.com', name: 'Test User', role: 'patient' },
+  }),
+}));
+
+vi.mock('@/lib/rate-limiter', () => ({
+  checkRateLimit: vi.fn().mockReturnValue({ allowed: true }),
+}));
+
 // Import route handler after mocks
 import { POST } from '@/app/api/analyze-file/route';
 import { NextRequest } from 'next/server';
