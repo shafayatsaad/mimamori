@@ -6,7 +6,7 @@ import {
 } from '@/lib/circuit-breaker';
 
 describe('callWithCircuitBreaker', () => {
-  const service: ServiceName = 'bedrock';
+  const service: ServiceName = 'gemini';
 
   beforeEach(() => {
     resetCircuitBreaker(service);
@@ -38,7 +38,7 @@ describe('callWithCircuitBreaker', () => {
     // 6th call should be rejected immediately without calling fn
     const fn = vi.fn(() => Promise.resolve('should not be called'));
     await expect(callWithCircuitBreaker(service, fn)).rejects.toThrow(
-      'Circuit breaker is open for service: bedrock',
+      'Circuit breaker is open for service: gemini',
     );
     expect(fn).not.toHaveBeenCalled();
   });
@@ -92,7 +92,7 @@ describe('callWithCircuitBreaker', () => {
     // Circuit should be open again
     const fn = vi.fn(() => Promise.resolve('nope'));
     await expect(callWithCircuitBreaker(service, fn)).rejects.toThrow(
-      'Circuit breaker is open for service: bedrock',
+      'Circuit breaker is open for service: gemini',
     );
     expect(fn).not.toHaveBeenCalled();
   });
@@ -118,18 +118,18 @@ describe('callWithCircuitBreaker', () => {
 
   it('maintains separate state per service', async () => {
     const fail = () => Promise.reject(new Error('fail'));
-    resetCircuitBreaker('ses');
+    resetCircuitBreaker('supabase');
 
-    // Open the bedrock circuit
+    // Open the gemini circuit
     for (let i = 0; i < 5; i++) {
-      await expect(callWithCircuitBreaker('bedrock', fail)).rejects.toThrow();
+      await expect(callWithCircuitBreaker('gemini', fail)).rejects.toThrow();
     }
 
-    // SES circuit should still be closed
-    const result = await callWithCircuitBreaker('ses', () => Promise.resolve('ses ok'));
-    expect(result).toBe('ses ok');
+    // Supabase circuit should still be closed
+    const result = await callWithCircuitBreaker('supabase', () => Promise.resolve('supabase ok'));
+    expect(result).toBe('supabase ok');
 
-    resetCircuitBreaker('ses');
+    resetCircuitBreaker('supabase');
   });
 
   it('respects custom config values', async () => {
