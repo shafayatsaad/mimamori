@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { QueryCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
-import docClient from '@/lib/dynamodb';
-import { getConfig } from '@/lib/config-service';
+import { supabase } from '@/lib/supabase-client';
 import { requireAuth } from '@/lib/auth/middleware';
 
 function getErrorMessage(error: unknown) {
@@ -12,13 +10,7 @@ function getErrorMessage(error: unknown) {
 }
 
 /**
- * GET /api/alerts — return unread in-app alerts for a user.
- *
- * Query params:
- *   - email (required): the user's email address
- *
- * DynamoDB key: PK = "USER#<email>", SK begins with "ALERT#"
- * Requirements: 9.3, 9.4
+ * GET /api/alerts — return alerts for a user.
  */
 export async function GET(request: NextRequest) {
   const authResult = await requireAuth(request);
@@ -34,46 +26,30 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Missing email parameter' }, { status: 400 });
     }
 
-    const TABLE_NAME = getConfig().aws.dataTable;
-    const pk = `USER#${email}`;
+    const { data, error } = await supabase
+      .from('alerts')
+      .select('*')
+      .eq('email', email)
+      .order('created_at', { ascending: false });
 
-    const result = await docClient.send(
-      new QueryCommand({
-        TableName: TABLE_NAME,
-        KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
-        ExpressionAttributeValues: {
-          ':pk': pk,
-          ':skPrefix': 'ALERT#',
-        },
-      }),
-    );
+    if (error) {
+      console.error('Error fetching alerts:', error);
+      return NextResponse.json({ error: 'Database service unavailable' }, { status: 503 });
+    }
 
-    const alerts = (result.Items || []).map((item) => ({
+    const alerts = (data || []).map((item) => ({
       id: item.id,
       type: item.type,
       title: item.title,
       message: item.message,
       read: item.read,
-      createdAt: item.createdAt,
-      ...(item.sourceDocId ? { sourceDocId: item.sourceDocId } : {}),
+      createdAt: item.created_at,
+      ...(item.source_doc_id ? { sourceDocId: item.source_doc_id } : {}),
     }));
 
     return NextResponse.json({ alerts }, { status: 200 });
   } catch (error) {
     console.error('GET /api/alerts error:', error);
-
-    const errorName =
-      error && typeof error === 'object' && 'name' in error
-        ? String((error as { name?: string }).name)
-        : '';
-
-    if (errorName === 'ResourceNotFoundException') {
-      return NextResponse.json(
-        { error: `Data table not found` },
-        { status: 503 },
-      );
-    }
-
     return NextResponse.json(
       { error: `Internal server error: ${getErrorMessage(error)}` },
       { status: 500 },
@@ -82,17 +58,7 @@ export async function GET(request: NextRequest) {
 }
 
 /**
- * POST /api/alerts — create an in-app alert in DynamoDB.
- *
- * Body fields:
- *   - email (required): the user's email address
- *   - type (required): "critical-finding" | "check-in" | "shared-insight" | "system"
- *   - title (required): alert title
- *   - message (required): alert message body
- *   - sourceDocId (optional): linked document ID for critical findings
- *
- * DynamoDB key: PK = "USER#<email>", SK = "ALERT#<timestamp>#<id>"
- * Requirements: 9.3, 9.4
+ * POST /api/alerts — create an in-app alert.
  */
 export async function POST(request: NextRequest) {
   const authResult = await requireAuth(request);
@@ -119,34 +85,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const TABLE_NAME = getConfig().aws.dataTable;
     const now = new Date();
     const id = crypto.randomUUID();
     const createdAt = now.toISOString();
-    const pk = `USER#${email}`;
-    const sk = `ALERT#${createdAt}#${id}`;
 
-    const item: Record<string, unknown> = {
-      PK: pk,
-      SK: sk,
-      id,
-      type,
-      title,
-      message,
-      read: false,
-      createdAt,
-    };
+    const { error: insertError } = await supabase
+      .from('alerts')
+      .insert({
+        id,
+        email,
+        type,
+        title,
+        message,
+        read: false,
+        created_at: createdAt,
+        source_doc_id: sourceDocId || null,
+      });
 
-    if (sourceDocId) {
-      item.sourceDocId = sourceDocId;
+    if (insertError) {
+      console.error('Error inserting alert:', insertError);
+      return NextResponse.json({ error: 'Database service unavailable' }, { status: 503 });
     }
-
-    await docClient.send(
-      new PutCommand({
-        TableName: TABLE_NAME,
-        Item: item,
-      }),
-    );
 
     return NextResponse.json(
       { alert: { id, type, title, message, read: false, createdAt, ...(sourceDocId ? { sourceDocId } : {}) } },
@@ -154,19 +113,6 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     console.error('POST /api/alerts error:', error);
-
-    const errorName =
-      error && typeof error === 'object' && 'name' in error
-        ? String((error as { name?: string }).name)
-        : '';
-
-    if (errorName === 'ResourceNotFoundException') {
-      return NextResponse.json(
-        { error: `Data table not found` },
-        { status: 503 },
-      );
-    }
-
     return NextResponse.json(
       { error: `Internal server error: ${getErrorMessage(error)}` },
       { status: 500 },
