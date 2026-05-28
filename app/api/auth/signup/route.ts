@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
-import { PutCommand, GetCommand } from '@aws-sdk/lib-dynamodb';
-import docClient from '@/lib/dynamodb';
-import { getConfig } from '@/lib/config-service';
+import { supabase } from '@/lib/supabase-client';
 import { hashPassword } from '@/lib/auth/password';
 
 function getErrorMessage(error: unknown) {
@@ -20,14 +18,17 @@ export async function POST(request: Request) {
     }
 
     // Check if user already exists
-    const checkUser = await docClient.send(
-      new GetCommand({
-        TableName: getConfig().aws.usersTable,
-        Key: { email },
-      })
-    );
+    const { data: existingUser, error: checkError } = await supabase
+      .from('users')
+      .select('email')
+      .eq('email', email)
+      .maybeSingle();
 
-    if (checkUser.Item) {
+    if (checkError) {
+      console.error('Error checking user existence:', checkError);
+    }
+
+    if (existingUser) {
       return NextResponse.json({ error: 'User already exists' }, { status: 409 });
     }
 
@@ -41,35 +42,21 @@ export async function POST(request: Request) {
       createdAt: new Date().toISOString(),
     };
 
-    await docClient.send(
-      new PutCommand({
-        TableName: getConfig().aws.usersTable,
-        Item: newUser,
-      })
-    );
+    const { error: insertError } = await supabase
+      .from('users')
+      .insert(newUser);
+
+    if (insertError) {
+      console.error('Error inserting user:', insertError);
+      return NextResponse.json(
+        { error: `Database error during signup: ${insertError.message}` },
+        { status: 503 }
+      );
+    }
 
     return NextResponse.json({ message: 'User created successfully', user: { email: newUser.email, name: newUser.name, role: newUser.role } }, { status: 201 });
   } catch (error) {
     console.error('Signup error:', error);
-
-    const errorName = error && typeof error === 'object' && 'name' in error
-      ? String((error as { name?: string }).name)
-      : '';
-
-    if (errorName === 'ResourceNotFoundException') {
-      return NextResponse.json(
-        { error: `Users table '${getConfig().aws.usersTable}' was not found` },
-        { status: 503 }
-      );
-    }
-
-    if (errorName === 'AccessDeniedException' || errorName === 'UnrecognizedClientException') {
-      return NextResponse.json(
-        { error: 'AWS credentials/permissions are not configured for signup' },
-        { status: 503 }
-      );
-    }
-
     return NextResponse.json({ error: `Internal server error: ${getErrorMessage(error)}` }, { status: 500 });
   }
 }
