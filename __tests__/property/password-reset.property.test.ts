@@ -131,83 +131,6 @@ function makeRequest(body: unknown): Request {
 }
 
 
-/**
- * Sets up the mock DynamoDB to simulate the full password reset flow:
- * - GetCommand on usersTable: returns user if email is in usersStore
- * - PutCommand on dataTable: stores the reset token
- * - GetCommand on dataTable: retrieves the reset token
- * - UpdateCommand on usersTable: updates the password hash
- * - UpdateCommand on dataTable: marks the token as used
- */
-function setupDynamoMock() {
-  mockDocClientSend.mockImplementation((command: { input: Record<string, unknown>; constructor: { name: string } }) => {
-    const cmdName = command.constructor.name;
-    const input = command.input as Record<string, unknown>;
-
-    if (cmdName === 'GetCommand') {
-      const tableName = input.TableName as string;
-      const key = input.Key as Record<string, string>;
-
-      if (tableName === 'test-users') {
-        // User lookup by email
-        const email = key.email;
-        const user = usersStore[email];
-        return Promise.resolve({ Item: user || undefined });
-      }
-
-      if (tableName === 'test-data') {
-        // Token lookup
-        const pk = key.PK as string;
-        const sk = key.SK as string;
-        const storeKey = `${pk}|${sk}`;
-        const item = dynamoStore['test-data']?.[storeKey];
-        return Promise.resolve({ Item: item || undefined });
-      }
-    }
-
-    if (cmdName === 'PutCommand') {
-      const tableName = input.TableName as string;
-      const item = input.Item as Record<string, unknown>;
-
-      if (tableName === 'test-data') {
-        const pk = item.PK as string;
-        const sk = item.SK as string;
-        const storeKey = `${pk}|${sk}`;
-        if (!dynamoStore[tableName]) dynamoStore[tableName] = {};
-        dynamoStore[tableName][storeKey] = { ...item };
-      }
-      return Promise.resolve({});
-    }
-
-    if (cmdName === 'UpdateCommand') {
-      const tableName = input.TableName as string;
-      const key = input.Key as Record<string, string>;
-      const exprValues = input.ExpressionAttributeValues as Record<string, unknown>;
-
-      if (tableName === 'test-users') {
-        // Password update
-        const email = key.email;
-        if (usersStore[email] && exprValues[':pw']) {
-          usersStore[email].password = exprValues[':pw'] as string;
-        }
-        return Promise.resolve({});
-      }
-
-      if (tableName === 'test-data') {
-        // Mark token as used
-        const pk = key.PK as string;
-        const sk = key.SK as string;
-        const storeKey = `${pk}|${sk}`;
-        if (dynamoStore[tableName]?.[storeKey] && exprValues[':used'] !== undefined) {
-          dynamoStore[tableName][storeKey].used = exprValues[':used'];
-        }
-        return Promise.resolve({});
-      }
-    }
-
-    return Promise.resolve({});
-  });
-}
 
 // --- Arbitraries ---
 
@@ -224,18 +147,15 @@ const passwordArb = fc.string({ minLength: 6, maxLength: 30 }).filter(s => s.tri
 describe('Property 2: Password reset round trip', () => {
   beforeEach(() => {
     resetStores();
-    mockDocClientSend.mockReset();
   });
 
   it('forgot-password → reset-password succeeds, then same token is rejected', async () => {
     await fc.assert(
       fc.asyncProperty(emailArb, passwordArb, async (email, newPassword) => {
         resetStores();
-        mockDocClientSend.mockReset();
 
         // Seed user in store
         usersStore[email] = { email, password: await hashPassword('old-password-123') };
-        setupDynamoMock();
 
         // Step 1: Call forgot-password
         const forgotReq = makeRequest({ email });
@@ -282,20 +202,17 @@ describe('Property 2: Password reset round trip', () => {
 describe('Property 3: Email enumeration prevention', () => {
   beforeEach(() => {
     resetStores();
-    mockDocClientSend.mockReset();
   });
 
   it('forgot-password returns identical status and body shape for existing and non-existing emails', async () => {
     await fc.assert(
       fc.asyncProperty(emailArb, fc.boolean(), async (email, userExists) => {
         resetStores();
-        mockDocClientSend.mockReset();
 
         // Conditionally seed user
         if (userExists) {
           usersStore[email] = { email, password: 'hashed-pw' };
         }
-        setupDynamoMock();
 
         const req = makeRequest({ email });
         const res = await forgotPasswordPOST(req);
