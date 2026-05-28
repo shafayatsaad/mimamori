@@ -105,13 +105,17 @@ ALTER TABLE "public"."reset_tokens" ENABLE ROW LEVEL SECURITY;
 -- Storage Buckets Configuration
 -- ========================================================================================
 
--- Insert the 'documents' bucket if it doesn't already exist
-INSERT INTO storage.buckets (id, name, public) 
-VALUES ('documents', 'documents', false)
+-- Create the 'documents' storage bucket (private, 50MB limit)
+-- Note: RLS on storage.objects is managed internally by Supabase — do NOT alter it here.
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'documents',
+  'documents',
+  false,
+  52428800,  -- 50 MB
+  ARRAY['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain', 'text/csv', 'application/json']
+)
 ON CONFLICT (id) DO NOTHING;
 
--- Enable RLS for the storage.objects table (which manages files inside the bucket)
-ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
-
--- As with the tables, since access is done via the Next.js API using the service_role key, 
--- we do not need to grant explicit client-side select/insert/update/delete policies.
+-- Access is done via the Next.js API using the service_role key, which bypasses RLS.
+-- No explicit client-side storage policies are needed.
