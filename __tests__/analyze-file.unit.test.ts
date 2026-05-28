@@ -114,7 +114,9 @@ describe('POST /api/analyze-file — critical findings and alert fallback', () =
       mockSendEmailWithRetry.mockResolvedValue({ success: true, messageId: 'msg-1' });
 
       const res = await POST(makeRequest({ docName: 'test-doc.pdf', fileUrl: '' }));
+      console.log('--- TEST DEBUG STATUS:', res.status);
       const body = await res.json();
+      console.log('--- TEST DEBUG BODY:', JSON.stringify(body));
 
       expect(body.criticalFinding).toBe(true);
       expect(body.criticalFindingMessage).toBe('Critical finding — review with your care team immediately');
