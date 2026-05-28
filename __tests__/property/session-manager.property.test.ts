@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect, beforeAll } from 'vitest';
 import * as fc from 'fast-check';
 import { createSessionWithExpiry, verifySession } from '@/lib/auth/session';
