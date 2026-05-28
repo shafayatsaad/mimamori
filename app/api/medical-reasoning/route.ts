@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ConverseCommand } from '@aws-sdk/client-bedrock-runtime';
-import { bedrockClient } from '@/lib/aws-clients';
-import { getModelId } from '@/lib/ai/model-registry';
+import { generateText } from '@/lib/gemini-client';
 import { renderPrompt, PromptType } from '@/lib/ai/prompt-templates';
 import { requireAuth } from '@/lib/auth/middleware';
 import { checkRateLimit } from '@/lib/rate-limiter';
@@ -79,35 +77,18 @@ export async function POST(req: NextRequest) {
       extraContext: (extraContext || '') + notesContext,
     });
 
-    const modelId = getModelId('orchestrator');
-
-    const command = new ConverseCommand({
-      modelId,
-      messages: [
-        {
-          role: 'user',
-          content: [{ text: promptText }],
-        },
-      ],
-      inferenceConfig: {
-        maxTokens: resolvedType === 'export-summary' ? 1500 : 500,
-      },
-    });
-
-    // --- Wrap Bedrock call with circuit breaker ---
-    const response = await callWithCircuitBreaker('bedrock', () =>
-      bedrockClient.send(command),
+    // --- Wrap Gemini call with circuit breaker ---
+    const responseText = await callWithCircuitBreaker('gemini', () =>
+      generateText(promptText, 'orchestrator'),
     );
 
-    const insightText =
-      response.output?.message?.content?.[0]?.text ||
-      'AI insight connected successfully.';
+    const insightText = responseText || 'AI insight connected successfully.';
 
     // --- Validate AI response based on prompt type ---
     if (resolvedType === 'generate-probes' || resolvedType === 'generate-followup-probes') {
       let parsed: unknown;
       try {
-        parsed = JSON.parse(insightText);
+        parsed = JSON.parse(insightText.trim().replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim());
       } catch {
         return NextResponse.json(
           { error: 'AI response format invalid' },
@@ -146,28 +127,10 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ insight: insightText });
   } catch (error: unknown) {
-    // --- Handle Bedrock timeout ---
-    if (
-      error &&
-      typeof error === 'object' &&
-      ('name' in error || 'message' in error)
-    ) {
-      const err = error as { name?: string; message?: string; $metadata?: { httpStatusCode?: number } };
-      const isTimeout =
-        err.name === 'TimeoutError' ||
-        err.name === 'RequestTimeoutError' ||
-        (err.message && err.message.includes('timed out')) ||
-        (err.message && err.message.includes('timeout')) ||
-        (err.$metadata?.httpStatusCode === 408);
-
-      if (isTimeout) {
-        return NextResponse.json(
-          { error: 'AI service timed out. Please try again.' },
-          { status: 504 },
-        );
-      }
-
-      // --- Handle circuit breaker open ---
+    if (error && typeof error === 'object' && ('message' in error || 'name' in error)) {
+      const err = error as { name?: string; message?: string };
+      
+      // Handle circuit breaker open
       if (err.message && err.message.includes('Circuit breaker is open')) {
         return NextResponse.json(
           { error: 'Service temporarily unavailable. Please try again later.' },
@@ -175,48 +138,13 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // --- Handle missing credentials ---
-      const errName = err.name || '';
-      const errMsg = err.message || '';
-
+      // Handle Gemini API Key issues / auth issues
       if (
-        errName === 'CredentialsProviderError' ||
-        errName === 'CredentialProviderError' ||
-        errMsg.includes('Could not load credentials') ||
-        errMsg.includes('Missing credentials') ||
-        errMsg.includes('credential')
+        err.name === 'APIKeyError' || 
+        (err.message && (err.message.includes('API key') || err.message.includes('invalid key')))
       ) {
-        console.error('Bedrock credentials not configured:', errMsg);
         return NextResponse.json(
-          { error: 'AI service is not configured. Please set up AWS credentials.', insight: null },
-          { status: 503 },
-        );
-      }
-
-      // --- Handle access denied / model not enabled ---
-      if (
-        errName === 'AccessDeniedException' ||
-        errName === 'UnrecognizedClientException' ||
-        errMsg.includes('Access denied') ||
-        errMsg.includes('not authorized') ||
-        errMsg.includes('is not authorized to perform')
-      ) {
-        console.error('Bedrock access denied:', errMsg);
-        return NextResponse.json(
-          { error: 'AI model access not enabled. Please enable model access in AWS Bedrock console.', insight: null },
-          { status: 503 },
-        );
-      }
-
-      // --- Handle invalid model ---
-      if (
-        errName === 'ValidationException' ||
-        errMsg.includes('model identifier is invalid') ||
-        errMsg.includes('Could not resolve the foundation model')
-      ) {
-        console.error('Bedrock model not found:', errMsg);
-        return NextResponse.json(
-          { error: 'AI model not available. Please check model configuration.', insight: null },
+          { error: 'AI service is not configured. Please set up GEMINI_API_KEY.', insight: null },
           { status: 503 },
         );
       }
@@ -226,7 +154,7 @@ export async function POST(req: NextRequest) {
       error && typeof error === 'object' && 'message' in error
         ? String((error as { message?: string }).message)
         : 'Unknown error';
-    console.error('Error invoking Bedrock route:', msg);
+    console.error('Error invoking Gemini reasoning route:', msg);
     return NextResponse.json(
       { error: 'Failed to generate AI content. Please try again later.', details: msg },
       { status: 500 },
