@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
-import { GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
-import docClient from '@/lib/dynamodb';
-import { getConfig } from '@/lib/config-service';
+import { supabase } from '@/lib/supabase-client';
 import { generateResetToken } from '@/lib/auth/reset-token';
 import { sendEmailWithRetry } from '@/lib/email-retry';
 
@@ -28,43 +26,45 @@ export async function POST(request: Request) {
       );
     }
 
-    const config = getConfig();
+    // Look up user in the users table
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('email', email)
+      .maybeSingle();
 
-    // Look up user in the users table (keyed by email)
-    const userResult = await docClient.send(
-      new GetCommand({
-        TableName: config.aws.usersTable,
-        Key: { email },
-      }),
-    );
+    if (userError) {
+      console.error('Error fetching user for password reset:', userError);
+    }
 
     // If user exists, generate token, store it, and send the email.
     // If user does NOT exist, skip silently — same response either way.
-    if (userResult.Item) {
+    if (user) {
       const token = generateResetToken();
       const now = new Date();
-      const expiresAt = Math.floor(now.getTime() / 1000) + 3600; // 1 hour TTL
+      const expiresAt = new Date(now.getTime() + 3600 * 1000).toISOString(); // 1 hour ISO string
 
-      // Store reset token in the data table (single-table design)
-      await docClient.send(
-        new PutCommand({
-          TableName: config.aws.dataTable,
-          Item: {
-            PK: `RESET#${token}`,
-            SK: 'TOKEN',
-            email,
-            createdAt: now.toISOString(),
-            expiresAt, // DynamoDB TTL (Unix epoch seconds)
-            used: false,
-          },
-        }),
-      );
+      // Store reset token in the reset_tokens table
+      const { error: insertError } = await supabase
+        .from('reset_tokens')
+        .insert({
+          token,
+          email,
+          created_at: now.toISOString(),
+          expires_at: expiresAt,
+          used: false,
+        });
+
+      if (insertError) {
+        console.error('Error inserting reset token:', insertError);
+        return NextResponse.json({ error: 'Database service unavailable' }, { status: 503 });
+      }
 
       // Build the reset link
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
       const resetLink = `${baseUrl}/reset-password?token=${token}`;
 
-      // Send the email via SES with retry
+      // Send the email stub
       await sendEmailWithRetry({
         Destination: { ToAddresses: [email] },
         Message: {
@@ -88,7 +88,7 @@ export async function POST(request: Request) {
             },
           },
         },
-        Source: config.aws.sesFromEmail,
+        Source: 'noreply@mimamori.ai',
       });
     }
 
@@ -96,29 +96,6 @@ export async function POST(request: Request) {
     return NextResponse.json(SUCCESS_RESPONSE, { status: 200 });
   } catch (error) {
     console.error('Forgot-password error:', error);
-
-    const errorName =
-      error && typeof error === 'object' && 'name' in error
-        ? String((error as { name?: string }).name)
-        : '';
-
-    if (errorName === 'ResourceNotFoundException') {
-      return NextResponse.json(
-        { error: 'Database table not found' },
-        { status: 503 },
-      );
-    }
-
-    if (
-      errorName === 'AccessDeniedException' ||
-      errorName === 'UnrecognizedClientException'
-    ) {
-      return NextResponse.json(
-        { error: 'AWS credentials/permissions are not configured' },
-        { status: 503 },
-      );
-    }
-
     return NextResponse.json(
       { error: `Internal server error: ${getErrorMessage(error)}` },
       { status: 500 },
