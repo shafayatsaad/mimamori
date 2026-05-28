@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { QueryCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
-import docClient from '@/lib/dynamodb';
-import { getConfig } from '@/lib/config-service';
+import { supabase } from '@/lib/supabase-client';
 import { requireAuth } from '@/lib/auth/middleware';
 import { validateSyncRequest } from '@/lib/api-validation';
-
-const TABLE_NAME = getConfig().aws.dataTable;
 
 export async function GET(request: NextRequest) {
   // --- Auth ---
@@ -22,51 +18,40 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Missing email parameter' }, { status: 400 });
     }
 
-    const pk = `USER#${email}`;
+    // Verify user exists
+    const { data: userRecord, error: userError } = await supabase
+      .from('users')
+      .select('email')
+      .eq('email', email)
+      .maybeSingle();
 
-    // Query all records for this user using single-table design
-    const result = await docClient.send(
-      new QueryCommand({
-        TableName: TABLE_NAME,
-        KeyConditionExpression: 'PK = :pk',
-        ExpressionAttributeValues: {
-          ':pk': pk
-        }
-      })
-    );
-
-    const items = result.Items || [];
-    if (items.length === 0) {
-       return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    if (userError) {
+      console.error('Error verifying user:', userError);
     }
 
-    // Reconstruct state from single-table items
+    if (!userRecord) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    // Query all records for this user across proper relational tables
+    const [stateResult, journalsResult, hydrationResult, documentsResult] = await Promise.all([
+      supabase.from('user_state').select('*').eq('email', email).maybeSingle(),
+      supabase.from('journals').select('data').eq('email', email),
+      supabase.from('hydration_logs').select('data').eq('email', email),
+      supabase.from('documents').select('data').eq('email', email),
+    ]);
+
+    // Reconstruct state
     const state: any = {
-      profile: {},
-      caregivers: [],
-      documents: [],
-      logs: [],
-      invitations: [],
-      appointments: [],
-      customNotes: [],
-      hydrationLogs: []
+      profile: stateResult.data?.profile || {},
+      caregivers: stateResult.data?.caregivers || [],
+      invitations: stateResult.data?.invitations || [],
+      appointments: stateResult.data?.appointments || [],
+      customNotes: stateResult.data?.custom_notes || [],
+      documents: (documentsResult.data || []).map((d: any) => d.data),
+      logs: (journalsResult.data || []).map((j: any) => j.data),
+      hydrationLogs: (hydrationResult.data || []).map((h: any) => h.data)
     };
-
-    for (const item of items) {
-       if (item.SK === 'PROFILE') {
-          state.profile = item.profile || {};
-          state.caregivers = item.caregivers || [];
-          state.invitations = item.invitations || [];
-          state.appointments = item.appointments || [];
-          state.customNotes = item.customNotes || [];
-       } else if (item.SK.startsWith('JOURNAL#')) {
-          state.logs.push(item.data);
-       } else if (item.SK.startsWith('FACT#') || item.SK.startsWith('DOC#')) {
-          state.documents.push(item.data);
-       } else if (item.SK.startsWith('HYDRATION#')) {
-          state.hydrationLogs.push(item.data);
-       }
-    }
 
     // Sort logs descending
     state.logs.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -75,15 +60,6 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('Sync GET error:', error);
-
-    const errorName = error && typeof error === 'object' && 'name' in error
-      ? String((error as { name?: string }).name)
-      : '';
-
-    if (errorName === 'ResourceNotFoundException') {
-      return NextResponse.json({ error: `Data table '${TABLE_NAME}' was not found` }, { status: 503 });
-    }
-
     return NextResponse.json({ error: 'Internal server error fetching state' }, { status: 500 });
   }
 }
@@ -113,107 +89,71 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required payload: state' }, { status: 400 });
     }
 
-    const pk = `USER#${email}`;
     const promises: Promise<any>[] = [];
 
-    // 1. Upsert Profile (Main Record)
+    // 1. Upsert Profile (Main Record) in user_state table
     promises.push(
-      docClient.send(
-        new PutCommand({
-          TableName: TABLE_NAME,
-          Item: {
-             PK: pk,
-             SK: 'PROFILE',
-             email: email,
-             profile: state.profile || {},
-             caregivers: state.caregivers || [],
-             invitations: state.invitations || [],
-             appointments: state.appointments || [],
-             customNotes: state.customNotes || []
-          }
-        })
-      )
+      supabase.from('user_state').upsert({
+        email: email,
+        profile: state.profile || {},
+        caregivers: state.caregivers || [],
+        invitations: state.invitations || [],
+        appointments: state.appointments || [],
+        custom_notes: state.customNotes || []
+      })
     );
 
-    // 2. Upsert Logs (Journals)
+    // 2. Upsert Logs (Journals) in journals table
     for (const log of (state.logs || [])) {
         if (!log.id || !log.date) continue;
-        let dateKey = log.id; // fallback
-        try {
-          // If the date is just a time string like "10:30 AM", Date parsing will fail.
-          const d = new Date(log.date);
-          if (!isNaN(d.getTime())) {
-             dateKey = d.toISOString();
-          } else {
-             // It's a time string or invalid date. Use today's date + time string instead.
-             dateKey = new Date().toISOString().split('T')[0] + 'T' + log.date.replace(/[^a-zA-Z0-9]/g, '');
-          }
-        } catch (e) {
-             dateKey = log.id;
-        }
-
         promises.push(
-           docClient.send(
-             new PutCommand({
-                TableName: TABLE_NAME,
-                Item: {
-                   PK: pk,
-                   SK: `JOURNAL#${dateKey}#${log.id}`,
-                   data: log
-                }
-             })
-           )
+          supabase.from('journals').upsert({
+            id: log.id,
+            email: email,
+            date: log.date,
+            data: log
+          })
         );
     }
 
-    // 3. Upsert Hydration Logs
+    // 3. Upsert Hydration Logs in hydration_logs table
     for (const log of (state.hydrationLogs || state.intakeLogs || [])) {
         if (!log.id || !log.date) continue;
         promises.push(
-           docClient.send(
-             new PutCommand({
-                TableName: TABLE_NAME,
-                Item: {
-                   PK: pk,
-                   SK: `HYDRATION#${log.date}#${log.id}`,
-                   data: log
-                }
-             })
-           )
+          supabase.from('hydration_logs').upsert({
+            id: log.id,
+            email: email,
+            date: log.date,
+            data: log
+          })
         );
     }
 
-    // 4. Upsert Documents & Facts
+    // 4. Upsert Documents in documents table
     for (const doc of (state.documents || [])) {
         if (!doc.id) continue;
         promises.push(
-           docClient.send(
-             new PutCommand({
-                TableName: TABLE_NAME,
-                Item: {
-                   PK: pk,
-                   SK: `DOC#${doc.type}#${doc.id}`,
-                   data: doc
-                }
-             })
-           )
+          supabase.from('documents').upsert({
+            id: doc.id,
+            email: email,
+            type: doc.type || 'unknown',
+            data: doc
+          })
         );
     }
 
-    await Promise.all(promises);
+    const results = await Promise.all(promises);
 
-    return NextResponse.json({ message: 'State synced successfully utilizing Single-Table Design' }, { status: 200 });
-  } catch (error) {
-    console.error('Sync POST error:', error);
-
-    const errorName = error && typeof error === 'object' && 'name' in error
-      ? String((error as { name?: string }).name)
-      : '';
-
-    if (errorName === 'ResourceNotFoundException') {
-      return NextResponse.json({ error: `Data table '${TABLE_NAME}' was not found` }, { status: 503 });
+    // Verify if any write failed
+    const failedUpsert = results.find(res => res.error);
+    if (failedUpsert) {
+      console.error('Failed to sync one or more records:', failedUpsert.error);
+      return NextResponse.json({ error: `Sync write error: ${failedUpsert.error.message}` }, { status: 503 });
     }
 
+    return NextResponse.json({ message: 'State synced successfully utilizing relational Supabase tables' }, { status: 200 });
+  } catch (error) {
+    console.error('Sync POST error:', error);
     return NextResponse.json({ error: 'Internal server error syncing state' }, { status: 500 });
   }
 }
