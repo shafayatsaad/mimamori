@@ -113,10 +113,8 @@ describe('POST /api/analyze-file — critical findings and alert fallback', () =
       });
       mockSendEmailWithRetry.mockResolvedValue({ success: true, messageId: 'msg-1' });
 
-      const res = await POST(makeRequest({ docName: 'test-doc.pdf', fileUrl: '' }));
-      console.log('--- TEST DEBUG STATUS:', res.status);
+      const res = await POST(makeRequest({ docName: 'test-doc.pdf', fileUrl: 'test-doc-url' }));
       const body = await res.json();
-      console.log('--- TEST DEBUG BODY:', JSON.stringify(body));
 
       expect(body.criticalFinding).toBe(true);
       expect(body.criticalFindingMessage).toBe('Critical finding — review with your care team immediately');
@@ -132,7 +130,7 @@ describe('POST /api/analyze-file — critical findings and alert fallback', () =
         medications: [],
       });
 
-      const res = await POST(makeRequest({ docName: 'test-doc.pdf', fileUrl: '' }));
+      const res = await POST(makeRequest({ docName: 'test-doc.pdf', fileUrl: 'test-doc-url' }));
       const body = await res.json();
 
       expect(body.criticalFinding).toBeUndefined();
@@ -150,7 +148,7 @@ describe('POST /api/analyze-file — critical findings and alert fallback', () =
       });
       mockSendEmailWithRetry.mockResolvedValue({ success: true, messageId: 'msg-2' });
 
-      const res = await POST(makeRequest({ docName: 'rx.pdf', fileUrl: '' }));
+      const res = await POST(makeRequest({ docName: 'rx.pdf', fileUrl: 'test-doc-url' }));
       const body = await res.json();
 
       expect(body.criticalFinding).toBe(true);
@@ -167,7 +165,7 @@ describe('POST /api/analyze-file — critical findings and alert fallback', () =
       });
       mockSendEmailWithRetry.mockResolvedValue({ success: true, messageId: 'msg-3' });
 
-      const res = await POST(makeRequest({ docName: 'note.pdf', fileUrl: '' }));
+      const res = await POST(makeRequest({ docName: 'note.pdf', fileUrl: 'test-doc-url' }));
       const body = await res.json();
 
       expect(body.criticalFinding).toBe(true);
@@ -189,7 +187,7 @@ describe('POST /api/analyze-file — critical findings and alert fallback', () =
       const insertMock = vi.fn().mockResolvedValue({ data: null, error: null });
       mockSupabaseFrom.mockReturnValue({ insert: insertMock });
 
-      const res = await POST(makeRequest({ docName: 'emergency-lab.pdf', fileUrl: '' }));
+      const res = await POST(makeRequest({ docName: 'emergency-lab.pdf', fileUrl: 'test-doc-url' }));
       const body = await res.json();
 
       // Should still return the analysis
@@ -212,7 +210,7 @@ describe('POST /api/analyze-file — critical findings and alert fallback', () =
       });
       mockSendEmailWithRetry.mockResolvedValue({ success: true, messageId: 'msg-retry' });
 
-      await POST(makeRequest({ docName: 'urgent.pdf', fileUrl: '' }));
+      await POST(makeRequest({ docName: 'urgent.pdf', fileUrl: 'test-doc-url' }));
 
       expect(mockSendEmailWithRetry).toHaveBeenCalledTimes(1);
       const [params, maxRetries] = mockSendEmailWithRetry.mock.calls[0];
@@ -230,7 +228,7 @@ describe('POST /api/analyze-file — critical findings and alert fallback', () =
         medications: [],
       });
 
-      await POST(makeRequest({ docName: 'insurance.pdf', fileUrl: '' }));
+      await POST(makeRequest({ docName: 'insurance.pdf', fileUrl: 'test-doc-url' }));
 
       expect(mockSendEmailWithRetry).not.toHaveBeenCalled();
     });
