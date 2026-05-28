@@ -24,10 +24,11 @@ function createChainMock(result: { data?: unknown; error?: unknown }) {
   const chain: Record<string, any> = {};
   chain.select = vi.fn().mockReturnValue(chain);
   chain.eq = vi.fn().mockReturnValue(chain);
-  chain.order = vi.fn().mockReturnValue(Promise.resolve(result));
-  chain.insert = vi.fn().mockReturnValue(Promise.resolve(result));
+  chain.order = vi.fn().mockReturnValue(chain);
+  chain.insert = vi.fn().mockReturnValue(chain);
   chain.update = vi.fn().mockReturnValue(chain);
-  chain.match = vi.fn().mockReturnValue(Promise.resolve(result));
+  chain.match = vi.fn().mockReturnValue(chain);
+  chain.then = (onfulfilled: any) => Promise.resolve(result).then(onfulfilled);
   return chain;
 }
 
@@ -267,19 +268,11 @@ describe('PATCH /api/alerts/[id]/read', () => {
   });
 
   it('marks an existing alert as read', async () => {
-    // First call: select query returns the alert
-    const selectChain = createChainMock({
-      data: [{ id: 'my-alert', email: 'user@test.com', read: false }],
+    const chain = createChainMock({
+      data: [{ id: 'my-alert', email: 'user@test.com', read: true }],
       error: null,
     });
-    // Second call: update
-    const updateChain = createChainMock({ data: null, error: null });
-
-    let callCount = 0;
-    supabaseMock.from.mockImplementation(() => {
-      callCount++;
-      return callCount === 1 ? selectChain : updateChain;
-    });
+    supabaseMock.from.mockReturnValue(chain);
 
     const res = await PATCH(
       makePatchRequest('my-alert', { email: 'user@test.com' }),
