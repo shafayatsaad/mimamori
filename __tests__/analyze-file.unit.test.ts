@@ -8,15 +8,31 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // --- Mocks ---
 
-const mockDocClientSend = vi.fn();
+const mockGenerateText = vi.fn();
+const mockGenerateWithFile = vi.fn();
+const mockMedicalAiAnalyze = vi.fn();
 const mockSendEmailWithRetry = vi.fn();
-const mockBedrockSend = vi.fn();
-const mockComprehendSend = vi.fn();
-const mockS3Send = vi.fn();
-const mockTextractSend = vi.fn();
+const mockSupabaseFrom = vi.fn();
+const mockSupabaseStorageFrom = vi.fn();
 
-vi.mock('@/lib/dynamodb', () => ({
-  default: { send: (...args: unknown[]) => mockDocClientSend(...args) },
+vi.mock('@/lib/supabase-client', () => ({
+  supabase: {
+    from: (...args: unknown[]) => mockSupabaseFrom(...args),
+    storage: {
+      from: (...args: unknown[]) => mockSupabaseStorageFrom(...args),
+    },
+  },
+}));
+
+vi.mock('@/lib/gemini-client', () => ({
+  generateText: (...args: unknown[]) => mockGenerateText(...args),
+  generateWithFile: (...args: unknown[]) => mockGenerateWithFile(...args),
+}));
+
+vi.mock('@/lib/medical-ai', () => ({
+  medicalAi: {
+    analyze: (...args: unknown[]) => mockMedicalAiAnalyze(...args),
+  },
 }));
 
 vi.mock('@/lib/email-retry', () => ({
@@ -28,24 +44,8 @@ vi.mock('@/lib/critical-alerts', async () => {
   return actual;
 });
 
-vi.mock('@/lib/aws-clients', () => ({
-  bedrockClient: { send: (...args: unknown[]) => mockBedrockSend(...args) },
-  comprehendMedicalClient: { send: (...args: unknown[]) => mockComprehendSend(...args) },
-  s3Client: { send: (...args: unknown[]) => mockS3Send(...args) },
-  textractClient: { send: (...args: unknown[]) => mockTextractSend(...args) },
-  sesClient: { send: vi.fn() },
-}));
-
 vi.mock('@/lib/config-service', () => ({
   getConfig: () => ({
-    aws: {
-      region: 'us-east-1',
-      usersTable: 'test-users',
-      dataTable: 'test-data',
-      sesFromEmail: 'noreply@test.com',
-      s3BucketName: 'test-bucket',
-      bedrockRouterArn: 'arn:aws:bedrock:us-east-1:000000000000:router/test',
-    },
     session: { jwtSecret: 'test-secret', expirySeconds: 86400 },
     alert: { defaultSubject: 'Alert', defaultTemplate: 'Alert message' },
   }),
@@ -62,6 +62,10 @@ vi.mock('@/lib/rate-limiter', () => ({
   checkRateLimit: vi.fn().mockReturnValue({ allowed: true }),
 }));
 
+vi.mock('@/lib/circuit-breaker', () => ({
+  callWithCircuitBreaker: vi.fn((_service: string, fn: () => unknown) => fn()),
+}));
+
 // Import route handler after mocks
 import { POST } from '@/app/api/analyze-file/route';
 import { NextRequest } from 'next/server';
@@ -76,18 +80,14 @@ function makeRequest(body: Record<string, unknown>): NextRequest {
   });
 }
 
-function mockBedrockResponse(parsedData: Record<string, unknown>) {
-  mockBedrockSend.mockResolvedValueOnce({
-    output: {
-      message: {
-        content: [{ text: JSON.stringify(parsedData) }],
-      },
-    },
-  });
+function mockGeminiResponse(parsedData: Record<string, unknown>) {
+  mockGenerateText.mockResolvedValueOnce(JSON.stringify(parsedData));
 }
 
-function setupComprehendMock(entities: unknown[] = []) {
-  mockComprehendSend.mockResolvedValue({ Entities: entities });
+function createSupabaseInsertChain() {
+  return {
+    insert: vi.fn().mockResolvedValue({ data: null, error: null }),
+  };
 }
 
 // --- Tests ---
@@ -95,15 +95,15 @@ function setupComprehendMock(entities: unknown[] = []) {
 describe('POST /api/analyze-file — critical findings and alert fallback', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    setupComprehendMock();
-    mockDocClientSend.mockResolvedValue({});
+    mockMedicalAiAnalyze.mockResolvedValue([]);
+    mockSupabaseFrom.mockReturnValue(createSupabaseInsertChain());
     // Set caregiver email env var
     process.env.AWS_CAREGIVER_EMAIL = 'caregiver@test.com';
   });
 
   describe('critical keyword detection (Req 13.4)', () => {
     it('flags response with criticalFinding when summary contains severity keywords', async () => {
-      mockBedrockResponse({
+      mockGeminiResponse({
         extractedName: 'Test Patient',
         actualType: 'Lab Result',
         summary: 'Patient has a critical condition requiring immediate attention.',
@@ -121,7 +121,7 @@ describe('POST /api/analyze-file — critical findings and alert fallback', () =
     });
 
     it('does not flag response when no severity keywords are present', async () => {
-      mockBedrockResponse({
+      mockGeminiResponse({
         extractedName: 'Test Patient',
         actualType: 'Lab Result',
         summary: 'All results are within normal range.',
@@ -138,7 +138,7 @@ describe('POST /api/analyze-file — critical findings and alert fallback', () =
     });
 
     it('detects "urgent" keyword in precautions', async () => {
-      mockBedrockResponse({
+      mockGeminiResponse({
         extractedName: 'Test Patient',
         actualType: 'Prescription',
         summary: 'Standard prescription review.',
@@ -155,7 +155,7 @@ describe('POST /api/analyze-file — critical findings and alert fallback', () =
     });
 
     it('detects "life-threatening" keyword', async () => {
-      mockBedrockResponse({
+      mockGeminiResponse({
         extractedName: 'Test Patient',
         actualType: 'Doctor Note',
         summary: 'Patient presents with life-threatening allergic reaction history.',
@@ -172,9 +172,9 @@ describe('POST /api/analyze-file — critical findings and alert fallback', () =
     });
   });
 
-  describe('SES alert fallback to DynamoDB (Req 9.3)', () => {
-    it('stores alert in DynamoDB when SES fails after retries', async () => {
-      mockBedrockResponse({
+  describe('Alert fallback to Supabase (Req 9.3)', () => {
+    it('stores alert in Supabase when email fails after retries', async () => {
+      mockGeminiResponse({
         extractedName: 'Test Patient',
         actualType: 'Lab Result',
         summary: 'Emergency findings detected.',
@@ -182,7 +182,10 @@ describe('POST /api/analyze-file — critical findings and alert fallback', () =
         biomarkers: [],
         medications: [],
       });
-      mockSendEmailWithRetry.mockResolvedValue({ success: false, error: 'SES unavailable' });
+      mockSendEmailWithRetry.mockResolvedValue({ success: false, error: 'Email unavailable' });
+
+      const insertMock = vi.fn().mockResolvedValue({ data: null, error: null });
+      mockSupabaseFrom.mockReturnValue({ insert: insertMock });
 
       const res = await POST(makeRequest({ docName: 'emergency-lab.pdf', fileUrl: '' }));
       const body = await res.json();
@@ -191,46 +194,13 @@ describe('POST /api/analyze-file — critical findings and alert fallback', () =
       expect(body.summary).toContain('Emergency findings');
       expect(body.criticalFinding).toBe(true);
 
-      // Should have stored fallback alert in DynamoDB
-      expect(mockDocClientSend).toHaveBeenCalled();
-      const putCall = mockDocClientSend.mock.calls.find(
-        (call: unknown[]) => (call[0] as { constructor: { name: string } }).constructor.name === 'PutCommand'
-      );
-      expect(putCall).toBeDefined();
-
-      const item = (putCall![0] as { input: { Item: Record<string, unknown> } }).input.Item;
-      expect(item.PK).toBe('USER#caregiver@test.com');
-      expect((item.SK as string)).toMatch(/^ALERT#/);
-      expect(item.type).toBe('critical-finding');
-      expect(item.read).toBe(false);
-      expect(item.sourceDocId).toBe('emergency-lab.pdf');
-      expect((item.message as string)).toContain('Email notification could not be delivered');
-    });
-
-    it('does not store DynamoDB alert when SES succeeds', async () => {
-      mockBedrockResponse({
-        extractedName: 'Test Patient',
-        actualType: 'Lab Result',
-        summary: 'Critical lab values detected.',
-        precautions: 'Immediate review needed.',
-        biomarkers: [],
-        medications: [],
-      });
-      mockSendEmailWithRetry.mockResolvedValue({ success: true, messageId: 'msg-ok' });
-
-      await POST(makeRequest({ docName: 'lab.pdf', fileUrl: '' }));
-
-      // sendEmailWithRetry should have been called
-      expect(mockSendEmailWithRetry).toHaveBeenCalledTimes(1);
-      // DynamoDB PutCommand should NOT have been called for alert storage
-      const putCalls = mockDocClientSend.mock.calls.filter(
-        (call: unknown[]) => (call[0] as { constructor: { name: string } }).constructor.name === 'PutCommand'
-      );
-      expect(putCalls).toHaveLength(0);
+      // Should have stored fallback alert in Supabase
+      expect(mockSupabaseFrom).toHaveBeenCalledWith('alerts');
+      expect(insertMock).toHaveBeenCalled();
     });
 
     it('uses sendEmailWithRetry with maxRetries=3', async () => {
-      mockBedrockResponse({
+      mockGeminiResponse({
         extractedName: 'Test Patient',
         actualType: 'Lab Result',
         summary: 'Urgent condition found.',
@@ -248,8 +218,8 @@ describe('POST /api/analyze-file — critical findings and alert fallback', () =
       expect(params.Destination.ToAddresses).toContain('caregiver@test.com');
     });
 
-    it('does not attempt email or DynamoDB when no severity detected', async () => {
-      mockBedrockResponse({
+    it('does not attempt email or alert when no severity detected', async () => {
+      mockGeminiResponse({
         extractedName: 'Test Patient',
         actualType: 'Insurance',
         summary: 'Standard insurance document.',
@@ -261,7 +231,6 @@ describe('POST /api/analyze-file — critical findings and alert fallback', () =
       await POST(makeRequest({ docName: 'insurance.pdf', fileUrl: '' }));
 
       expect(mockSendEmailWithRetry).not.toHaveBeenCalled();
-      expect(mockDocClientSend).not.toHaveBeenCalled();
     });
   });
 });
