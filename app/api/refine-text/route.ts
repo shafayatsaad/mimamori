@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ConverseCommand } from '@aws-sdk/client-bedrock-runtime';
-import { bedrockClient } from '@/lib/aws-clients';
-import { getConfig } from '@/lib/config-service';
+import { generateText } from '@/lib/gemini-client';
 
 export async function POST(req: NextRequest) {
   try {
@@ -25,41 +23,12 @@ Return ONLY the refined text with no intro, no outro, no quotes, no markdown for
 
 Original text: ${text}`;
 
-    const appConfig = getConfig();
-    const models = [
-      'us.anthropic.claude-3-5-haiku-20241022-v1:0',
-      appConfig.aws.bedrockRouterArn
-    ];
-
-    let response: any = null;
-    let lastError: unknown = null;
-
-    for (const modelId of models) {
-      try {
-        const command = new ConverseCommand({
-          modelId,
-          messages: [{ role: "user", content: [{ text: promptText }] }],
-          inferenceConfig: { maxTokens: 500, temperature: 0.1 }
-        });
-        response = await bedrockClient.send(command);
-        break; // Success
-      } catch (err: unknown) {
-        lastError = err;
-        const msg = err && typeof err === 'object' && 'message' in err ? String((err as {message?: string}).message) : 'Unknown';
-        console.warn(`Model ${modelId} failed: ${msg}. Trying fallback...`);
-      }
-    }
-
-    if (!response) {
-      console.error('All Bedrock models failed for refine-text:', lastError);
-      return NextResponse.json({ error: 'Error refining text. All Bedrock models failed or are throttled.' }, { status: 500 });
-    }
-
-    const refinedText = response.output?.message?.content?.[0]?.text?.trim() || text;
+    const refinedTextResponse = await generateText(promptText, 'orchestrator');
+    const refinedText = refinedTextResponse?.trim() || text;
 
     return NextResponse.json({ refinedText });
   } catch (error) {
-    console.error('Error in refine-text route using Bedrock:', error);
+    console.error('Error in refine-text route using Gemini:', error);
     return NextResponse.json({ refinedText: 'Error refining text' });
   }
 }
