@@ -1,9 +1,6 @@
 import { NextResponse } from 'next/server';
-import { ScanCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
-import docClient from '@/lib/dynamodb';
+import { supabase } from '@/lib/supabase-client';
 import { getConfig } from '@/lib/config-service';
-
-const TABLE_NAME = getConfig().aws.dataTable;
 
 export async function POST(request: Request) {
   try {
@@ -15,20 +12,21 @@ export async function POST(request: Request) {
 
     const upperCode = code.toUpperCase();
 
-    // Query all PROFILES in the Single-Table Design to locate the invitation code
-    const scanResult = await docClient.send(
-      new ScanCommand({
-        TableName: TABLE_NAME,
-        FilterExpression: 'SK = :sk',
-        ExpressionAttributeValues: { ':sk': 'PROFILE' }
-      })
-    );
+    // Query all records from the user_state table to locate the invitation code
+    const { data: profiles, error: fetchError } = await supabase
+      .from('user_state')
+      .select('*');
+
+    if (fetchError) {
+      console.error('Error fetching profiles:', fetchError);
+      return NextResponse.json({ error: 'Database service unavailable' }, { status: 503 });
+    }
 
     let matchingPatient = null;
     let matchingInviteIndex = -1;
     let matchingInvite = null;
 
-    for (const userProfile of scanResult.Items || []) {
+    for (const userProfile of profiles || []) {
       const invites = userProfile.invitations || [];
       const index = invites.findIndex((inv: any) => inv.code.toUpperCase() === upperCode);
       if (index !== -1) {
@@ -47,7 +45,7 @@ export async function POST(request: Request) {
           config.demo.joinCode !== '' &&
           upperCode === config.demo.joinCode.toUpperCase()
         ) {
-             for (const userProfile of scanResult.Items || []) {
+             for (const userProfile of profiles || []) {
                   if (userProfile.caregivers && userProfile.caregivers.length > 0) {
                       return NextResponse.json({ 
                           message: 'Demo joined', 
@@ -75,17 +73,19 @@ export async function POST(request: Request) {
     const updatedCaregivers = [...(matchingPatient.caregivers || []), newCaregiver];
     const updatedInvites = matchingPatient.invitations.filter((_: any, i: number) => i !== matchingInviteIndex);
 
-    // Overwrite the specific user's PROFILE record
-    await docClient.send(
-      new PutCommand({
-        TableName: TABLE_NAME,
-        Item: {
-           ...matchingPatient,
-           caregivers: updatedCaregivers,
-           invitations: updatedInvites
-        }
+    // Overwrite the specific user's user_state record
+    const { error: updateError } = await supabase
+      .from('user_state')
+      .update({
+        caregivers: updatedCaregivers,
+        invitations: updatedInvites
       })
-    );
+      .eq('email', matchingPatient.email);
+
+    if (updateError) {
+      console.error('Error updating caregivers:', updateError);
+      return NextResponse.json({ error: 'Database service unavailable' }, { status: 503 });
+    }
 
     return NextResponse.json({ 
         message: 'Caregiver joined successfully', 
@@ -95,15 +95,6 @@ export async function POST(request: Request) {
 
   } catch (error) {
     console.error('Caregiver join error:', error);
-
-    const errorName = error && typeof error === 'object' && 'name' in error
-      ? String((error as { name?: string }).name)
-      : '';
-
-    if (errorName === 'ResourceNotFoundException') {
-      return NextResponse.json({ error: `Data table '${TABLE_NAME}' was not found` }, { status: 503 });
-    }
-
     return NextResponse.json({ error: 'Internal server error joining via code' }, { status: 500 });
   }
 }
