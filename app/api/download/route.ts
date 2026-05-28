@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GetObjectCommand } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { s3Client } from '@/lib/aws-clients';
+import { supabase } from '@/lib/supabase-client';
 import { requireAuth } from '@/lib/auth/middleware';
 
 export async function GET(req: NextRequest) {
@@ -11,18 +9,33 @@ export async function GET(req: NextRequest) {
   }
 
   const url = req.nextUrl.searchParams.get('url');
-  if (!url || !url.startsWith('s3://')) return NextResponse.json({ error: 'Invalid s3 url' }, { status: 400 });
-  
-  const s3Parts = url.replace('s3://', '').split('/');
-  const bucket = s3Parts.shift()!;
-  const key = s3Parts.join('/');
-  
-  const command = new GetObjectCommand({ Bucket: bucket, Key: decodeURIComponent(key) });
+  if (!url) {
+    return NextResponse.json({ error: 'Missing url parameter' }, { status: 400 });
+  }
+
+  let key = '';
+  if (url.startsWith('s3://')) {
+     const s3Parts = url.replace('s3://', '').split('/');
+     s3Parts.shift(); // Remove bucket part
+     key = s3Parts.join('/');
+  } else if (url.startsWith('supabase://')) {
+     key = url.replace('supabase://', '');
+  } else {
+     return NextResponse.json({ error: 'Invalid storage URL format' }, { status: 400 });
+  }
+
   try {
-     const signedUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
-     return NextResponse.redirect(signedUrl);
+     const { data, error } = await supabase.storage
+       .from('documents')
+       .createSignedUrl(decodeURIComponent(key), 3600);
+
+     if (error || !data?.signedUrl) {
+       throw error || new Error('Failed to generate signed URL from storage provider');
+     }
+
+     return NextResponse.redirect(data.signedUrl);
   } catch (e: unknown) {
-     console.error('Download presign error', e);
+     console.error('Download presign error:', e);
      const msg = e && typeof e === 'object' && 'message' in e ? String((e as {message?: string}).message) : 'Unknown error';
      return NextResponse.json({ error: 'Failed to generate signed URL', details: msg }, { status: 500 });
   }
