@@ -24,40 +24,77 @@ import * as fc from 'fast-check';
  * **Validates: Requirements 3.6**
  */
 
-// --- In-memory DynamoDB store ---
+// --- In-memory Store ---
 
-let dynamoStore: Record<string, Record<string, Record<string, unknown>>>;
-let usersStore: Record<string, Record<string, unknown>>;
+let usersStore: Record<string, any>;
+let resetTokensStore: Record<string, any>;
 let capturedToken: string | null;
 
 function resetStores() {
-  dynamoStore = {};
   usersStore = {};
+  resetTokensStore = {};
   capturedToken = null;
 }
 
 // --- Mocks ---
 
-const mockDocClientSend = vi.fn();
-
-vi.mock('@/lib/dynamodb', () => ({
-  default: { send: (...args: unknown[]) => mockDocClientSend(...args) },
-}));
-
-vi.mock('@/lib/aws-clients', () => ({
-  sesClient: { send: vi.fn().mockResolvedValue({ MessageId: 'mock-msg-id' }) },
-  docClient: { send: (...args: unknown[]) => mockDocClientSend(...args) },
+vi.mock('@/lib/supabase-client', () => ({
+  supabase: {
+    from: (table: string) => {
+      return {
+        select: (fields: string) => {
+          return {
+            eq: (field: string, value: any) => {
+              return {
+                maybeSingle: async () => {
+                  if (table === 'users') {
+                    const user = usersStore[value];
+                    return { data: user || null, error: null };
+                  }
+                  if (table === 'reset_tokens') {
+                    const record = resetTokensStore[value];
+                    return { data: record || null, error: null };
+                  }
+                  return { data: null, error: null };
+                }
+              };
+            }
+          };
+        },
+        insert: async (data: any) => {
+          if (table === 'reset_tokens') {
+            resetTokensStore[data.token] = { ...data };
+          }
+          return { error: null };
+        },
+        update: (updateData: any) => {
+          return {
+            eq: async (field: string, value: any) => {
+              if (table === 'users') {
+                if (usersStore[value]) {
+                  Object.assign(usersStore[value], updateData);
+                }
+              }
+              if (table === 'reset_tokens') {
+                if (resetTokensStore[value]) {
+                  Object.assign(resetTokensStore[value], updateData);
+                }
+              }
+              return { error: null };
+            }
+          };
+        }
+      };
+    }
+  }
 }));
 
 vi.mock('@/lib/config-service', () => ({
   getConfig: () => ({
-    aws: {
-      region: 'us-east-1',
-      usersTable: 'test-users',
-      dataTable: 'test-data',
-      sesFromEmail: 'noreply@test.com',
-      s3BucketName: 'test-bucket',
-      bedrockRouterArn: 'arn:aws:bedrock:us-east-1:000000000000:router/test',
+    supabase: {
+      url: 'https://example.supabase.co',
+      publishableKey: 'test-pub-key',
+      storageBucket: 'documents',
     },
     session: { jwtSecret: 'test-secret', expirySeconds: 86400 },
   }),
