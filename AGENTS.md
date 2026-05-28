@@ -4,9 +4,9 @@
 
 - **Framework**: Next.js 14 App Router + React 18 + TypeScript + Tailwind CSS
 - **Location**: All app code is in the project root
-- **Primary DB**: AWS DynamoDB (single-table design)
+- **Primary DB**: Supabase (PostgreSQL tables: users, user_state, journals, hydration_logs, documents, alerts, reset_tokens)
 - **Secondary DB**: Prisma + PostgreSQL (CarePlan, PromptTemplate, PermissionType, DocumentCategoryRule)
-- **AI**: Amazon Bedrock (Claude 3.5 Haiku primary, Nova fallback) + Comprehend Medical + Textract
+- **AI**: Google Gemini (`gemini-2.0-flash` primary for reasoning & vision, `gemini-2.0-flash-lite` fallback)
 - **Auth**: bcrypt + JWT (jose) stored in httpOnly cookies
 - **Tests**: Vitest + fast-check, run with `npm test`
 - **Build**: `npm run build` (prisma generate + next build)
@@ -34,4 +34,4 @@ The project follows Next.js 14 App Router conventions with all source code at th
 
 ## Key State
 
-Global state in `context/AppContext.tsx` via React Context. Syncs bidirectionally with DynamoDB. Falls back to localStorage.
+Global state in `context/AppContext.tsx` via React Context. Syncs bidirectionally with Supabase. Falls back to localStorage.
