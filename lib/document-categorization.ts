@@ -162,22 +162,20 @@ export async function classifyDocumentWithAI(
     return { category, confidence: 1.0 };
   }
 
-  // For image files, use Bedrock vision-based classification
+  // For image files, use Gemini vision-based classification
   try {
-    const { ConverseCommand } = await import('@aws-sdk/client-bedrock-runtime');
-    const { bedrockClient } = await import('@/lib/aws-clients');
-    const { getConfig } = await import('@/lib/config-service');
     const { SYSTEM_GUARDRAIL } = await import('@/lib/ai/guardrails');
+    const { generateWithFile } = await import('@/lib/gemini-client');
 
     // Extract base64 data from data URL or use the URL directly
-    let imageBytes: Uint8Array;
-    let format: 'jpeg' | 'png' | 'webp' | 'gif' = 'jpeg';
+    let imageBytes: Buffer;
+    let format = 'jpeg';
 
     if (fileUrl.startsWith('data:image/')) {
       const matches = fileUrl.match(/^data:image\/([a-zA-Z0-9]+);base64,(.+)$/);
       if (matches) {
-        format = (matches[1] === 'jpg' ? 'jpeg' : matches[1]) as 'jpeg' | 'png' | 'webp' | 'gif';
-        imageBytes = Uint8Array.from(Buffer.from(matches[2], 'base64'));
+        format = matches[1] === 'jpg' ? 'jpeg' : matches[1];
+        imageBytes = Buffer.from(matches[2], 'base64');
       } else {
         // Cannot parse data URL — fall back to rule-based
         const ext = fileName.split('.').pop() || '';
@@ -185,7 +183,7 @@ export async function classifyDocumentWithAI(
         return { category, confidence: 0.5 };
       }
     } else {
-      // For non-data URLs, fall back to rule-based (S3 fetch is handled by the caller)
+      // For non-data URLs, fall back to rule-based
       const ext = fileName.split('.').pop() || '';
       const category = classifyDocument(mimeType, ext, DEFAULT_CATEGORY_RULES, 'Uncategorized', fileName);
       return { category, confidence: 0.5 };
@@ -212,54 +210,8 @@ Return ONLY a JSON object with exactly these fields:
 
 The file name is: "${fileName}"`;
 
-    const appConfig = getConfig();
-    const models = [
-      'us.anthropic.claude-3-5-haiku-20241022-v1:0',
-      appConfig.aws.bedrockRouterArn,
-    ];
-
-    let response: any = null;
-
-    for (const modelId of models) {
-      try {
-        const command = new ConverseCommand({
-          modelId,
-          messages: [
-            {
-              role: 'user',
-              content: [
-                {
-                  image: {
-                    format,
-                    source: { bytes: imageBytes },
-                  },
-                },
-                { text: promptText },
-              ],
-            },
-          ],
-          inferenceConfig: { maxTokens: 256, temperature: 0.1 },
-        });
-        response = await bedrockClient.send(command);
-        break;
-      } catch (err: unknown) {
-        const errObj = err as { name?: string; message?: string };
-        console.warn(
-          `[classifyDocumentWithAI] Model ${modelId} failed: ${errObj.name} — ${errObj.message}. Trying fallback...`
-        );
-        continue;
-      }
-    }
-
-    if (!response) {
-      // All models failed — fall back to rule-based
-      const ext = fileName.split('.').pop() || '';
-      const category = classifyDocument(mimeType, ext, DEFAULT_CATEGORY_RULES, 'Uncategorized', fileName);
-      return { category, confidence: 0.5 };
-    }
-
-    const text = response.output?.message?.content?.[0]?.text || '{}';
-    const cleanText = text.trim().replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
+    const response = await generateWithFile(promptText, imageBytes, `image/${format}`, 'orchestrator');
+    const cleanText = response.trim().replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
 
     const parsed = JSON.parse(cleanText);
     const category = typeof parsed.category === 'string' ? parsed.category : 'Uncategorized';
