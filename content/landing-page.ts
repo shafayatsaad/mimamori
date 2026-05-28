@@ -89,9 +89,9 @@ export const landingPageContent: LandingPageContent = {
       {
         title: "Legal",
         links: [
-          { label: "Privacy Policy", href: "#", disabled: true, tooltip: "Coming Soon" },
-          { label: "Terms of Service", href: "#", disabled: true, tooltip: "Coming Soon" },
-          { label: "Cookie Policy", href: "#", disabled: true, tooltip: "Coming Soon" }
+          { label: "Privacy Policy", href: "/privacy" },
+          { label: "Terms of Service", href: "/terms" },
+          { label: "Cookie Policy", href: "/cookies" }
         ]
       }
     ],
