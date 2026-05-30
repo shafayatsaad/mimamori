@@ -1,5 +1,5 @@
-const { supabase } = require('./lib/supabase-client');
 require('dotenv').config({ path: '.env.local' });
+const { supabase } = require('./lib/supabase-client');
 
 async function testUpload() {
   console.log('Testing Supabase Client upload...');
