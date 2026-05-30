@@ -1,6 +1,6 @@
 require('dotenv').config({ path: '.env.local' });
 const { GoogleGenerativeAI } = require('@google/generative-ai');
-const { PrismaClient } = require('@prisma/client');
+const { PrismaClient } = require('./app/generated/prisma/client');
 
 async function checkPostgres() {
   console.log('--- Checking PostgreSQL connection... ---');
