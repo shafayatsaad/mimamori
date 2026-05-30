@@ -81,7 +81,11 @@ export default function HydrationCard() {
       setGeoError(null);
       try {
         const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: false,
+            timeout: 30000,
+            maximumAge: 60000
+          });
         });
         await fetchWeatherByLocation(position.coords.latitude, position.coords.longitude);
       } catch (err: any) {
@@ -290,8 +294,8 @@ export default function HydrationCard() {
         </div>
       </div>
 
-      {/* Quick-add controls — hidden for caregivers and when goal is reached */}
-      {!isCaregiver && !goalReached && (
+      {/* Quick-add controls — hidden for caregivers */}
+      {!isCaregiver && (
         <>
           {/* Preset buttons row */}
           <div className="flex gap-1.5 mb-2">
