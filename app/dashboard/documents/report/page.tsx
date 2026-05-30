@@ -30,7 +30,13 @@ function LabReportAnalysisContent() {
 
   useEffect(() => {
     async function fetchAnalysis() {
-      if (doc.analysis) {
+      // 1. If we have a target document ID in URL but it hasn't loaded in state yet, wait.
+      if (doc.id === 'fallback' && id) {
+        return;
+      }
+
+      // 2. Only use existing analysis if it has a summary and no error.
+      if (doc.analysis && !doc.analysis.error && doc.analysis.summary) {
         setAiSummary(doc.analysis.summary);
         setBiomarkers(doc.analysis.biomarkers || []);
         setExtractedName(doc.analysis.extractedName || 'Unknown');
@@ -50,6 +56,13 @@ function LabReportAnalysisContent() {
         });
         const data = await res.json();
         
+        if (data.error) {
+          setAiSummary(`Analysis failed: ${data.error}`);
+          updateDocument(doc.id, { analysis: data });
+          setIsAnalyzing(false);
+          return;
+        }
+        
         setAiSummary(data.summary);
         setBiomarkers(data.biomarkers || []);
         setExtractedName(data.extractedName || 'Unknown');
@@ -65,7 +78,7 @@ function LabReportAnalysisContent() {
         }
       } catch (err) {
         console.error('Failed to analyze document', err);
-        setAiSummary('Analysis failed to load.');
+        setAiSummary('Analysis failed to load due to a network error.');
       } finally {
         setIsAnalyzing(false);
       }
