@@ -221,11 +221,11 @@ export function getConfig(): AppConfig {
       defaultTemp: optionalEnvFloat('WEATHER_DEFAULT_TEMP', 20),
     },
     ai: {
-      modelMicro: optionalEnv('AI_MODEL_MICRO', 'gemini-2.0-flash-lite'),
-      modelOrchestrator: optionalEnv('AI_MODEL_ORCHESTRATOR', 'gemini-2.0-flash'),
-      modelAnalyzer: optionalEnv('AI_MODEL_ANALYZER', 'gemini-2.0-flash'),
-      modelProcessor: optionalEnv('AI_MODEL_PROCESSOR', 'gemini-2.0-flash'),
-      modelSpecialist: optionalEnv('AI_MODEL_SPECIALIST', 'gemini-2.0-flash'),
+      modelMicro: optionalEnv('AI_MODEL_MICRO', 'z-ai/glm-5.1'),
+      modelOrchestrator: optionalEnv('AI_MODEL_ORCHESTRATOR', 'z-ai/glm-5.1'),
+      modelAnalyzer: optionalEnv('AI_MODEL_ANALYZER', 'z-ai/glm-5.1'),
+      modelProcessor: optionalEnv('AI_MODEL_PROCESSOR', 'z-ai/glm-5.1'),
+      modelSpecialist: optionalEnv('AI_MODEL_SPECIALIST', 'z-ai/glm-5.1'),
     },
     demo: {
       enabled: optionalEnvBool('DEMO_MODE', false),
