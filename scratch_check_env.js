@@ -43,27 +43,60 @@ async function checkGemini() {
 async function checkSupabase() {
   console.log('\n--- Checking Supabase credentials... ---');
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-  if (!url || !key) {
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  
+  if (!url || !anonKey) {
     console.log('❌ Supabase credentials not set in env.');
     return;
   }
+  
   console.log(`Supabase URL: ${url}`);
-  try {
-    const response = await fetch(`${url}/rest/v1/`, {
-      headers: {
-        apikey: key,
-        Authorization: `Bearer ${key}`
-      }
-    });
-    if (response.ok) {
-      console.log('✅ Supabase REST API connection successful!');
+  
+  const { createClient } = require('@supabase/supabase-js');
+  
+  // Test with Anon Key
+  console.log('Testing with Anon Key...');
+  const supabaseAnon = createClient(url, anonKey);
+  const { data: anonData, error: anonError } = await supabaseAnon.from('users').select('email').limit(1);
+  if (anonError) {
+    console.log('❌ Anon client query to "users" table failed:', anonError.message);
+  } else {
+    console.log('✅ Anon client query to "users" table succeeded!');
+  }
+  
+  // Test with Service Role Key
+  if (serviceKey) {
+    console.log('Testing with Service Role Key...');
+    const supabaseService = createClient(url, serviceKey);
+    
+    // Test select
+    const { data: sData, error: sError } = await supabaseService.from('users').select('email').limit(1);
+    if (sError) {
+      console.log('❌ Service Role client query to "users" table failed:', sError.message);
     } else {
-      const text = await response.text();
-      console.log(`❌ Supabase REST API returned status ${response.status}:`, text);
+      console.log('✅ Service Role client query to "users" table succeeded!');
     }
-  } catch (error) {
-    console.log('❌ Supabase connection failed:', error.message);
+    
+    // Test write permission (bypassing RLS)
+    const tempEmail = `test_env_check_${Date.now()}@example.com`;
+    const { error: insertError } = await supabaseService.from('users').insert({
+      email: tempEmail,
+      name: 'Test Env Check User',
+      password: 'hashedpassword',
+      role: 'patient',
+      createdAt: new Date().toISOString()
+    });
+    
+    if (insertError) {
+      console.log('❌ Service Role client insert test failed:', insertError.message);
+    } else {
+      console.log('✅ Service Role client insert test succeeded (RLS bypassed successfully)!');
+      // Clean up
+      await supabaseService.from('users').delete().eq('email', tempEmail);
+    }
+  } else {
+    console.log('⚠️ SUPABASE_SERVICE_ROLE_KEY is NOT set. Server-side auth (signup/login) will fail due to RLS policies.');
   }
 }
 
@@ -72,6 +105,7 @@ async function checkEnvVars() {
   const vars = [
     'NEXT_PUBLIC_SUPABASE_URL',
     'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
+    'SUPABASE_SERVICE_ROLE_KEY',
     'POSTGRES_PRISMA_URL',
     'POSTGRES_URL_NON_POOLING',
     'GEMINI_API_KEY',
@@ -90,6 +124,7 @@ async function checkEnvVars() {
     }
   }
 }
+
 
 async function main() {
   await checkEnvVars();
