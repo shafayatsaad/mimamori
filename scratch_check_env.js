@@ -1,6 +1,6 @@
 require('dotenv').config({ path: '.env.local' });
 const { GoogleGenerativeAI } = require('@google/generative-ai');
-const { PrismaClient } = require('./app/generated/prisma/client');
+const { Client } = require('pg');
 
 async function checkPostgres() {
   console.log('--- Checking PostgreSQL connection... ---');
@@ -10,19 +10,16 @@ async function checkPostgres() {
     return;
   }
   console.log(`Connecting to: ${url.replace(/:[^:@]+@/, ':****@')}`);
-  const prisma = new PrismaClient({
-    datasourceUrl: url
-  });
+  const client = new Client({ connectionString: url, ssl: { rejectUnauthorized: false } });
   try {
-    await prisma.$connect();
+    await client.connect();
     console.log('✅ PostgreSQL connection successful!');
-    // Let's do a simple query
-    await prisma.$executeRaw`SELECT 1`;
-    console.log('✅ PostgreSQL test query successful!');
+    const res = await client.query('SELECT 1 AS result');
+    console.log('✅ PostgreSQL test query successful! Result:', res.rows[0].result);
   } catch (error) {
     console.log('❌ PostgreSQL connection failed:', error.message);
   } finally {
-    await prisma.$disconnect();
+    await client.end();
   }
 }
 
@@ -70,10 +67,36 @@ async function checkSupabase() {
   }
 }
 
+async function checkEnvVars() {
+  console.log('\n--- Checking all environment variables... ---');
+  const vars = [
+    'NEXT_PUBLIC_SUPABASE_URL',
+    'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
+    'POSTGRES_PRISMA_URL',
+    'POSTGRES_URL_NON_POOLING',
+    'GEMINI_API_KEY',
+    'JWT_SECRET',
+    'NEXTAUTH_URL',
+  ];
+  for (const v of vars) {
+    const val = process.env[v];
+    if (!val) {
+      console.log(`❌ ${v} — NOT SET`);
+    } else {
+      const display = v.includes('KEY') || v.includes('SECRET') || v.includes('POSTGRES')
+        ? val.substring(0, 10) + '...'
+        : val;
+      console.log(`✅ ${v} = ${display}`);
+    }
+  }
+}
+
 async function main() {
+  await checkEnvVars();
   await checkPostgres();
   await checkGemini();
   await checkSupabase();
 }
 
 main();
+
