@@ -197,15 +197,17 @@ Configure your `.env.local` based on `.env.example`. Key variables include:
 # Supabase & Gemini Configuration
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key   # Crucial for bypassing RLS in server-side API endpoints
 GEMINI_API_KEY=your_google_gemini_api_key
 SUPABASE_STORAGE_BUCKET=documents
 
-# Relational Database Configuration
+# Relational Database Configuration (for Prisma v7 + PostgreSQL dynamic pg adapter connection)
 POSTGRES_PRISMA_URL=your_postgres_prisma_url_with_pooling
 POSTGRES_URL_NON_POOLING=your_postgres_direct_url
 
 # Authentication / Session
 SESSION_JWT_SECRET=your_jwt_signing_secret
+JWT_SECRET=your_jwt_signing_secret
 ```
 
 ### Development
@@ -228,8 +230,9 @@ Mimamori is configured to be deployed easily on Vercel or any other Next.js-comp
 3. **App Environment Variables**: Add the required environment variables in the Vercel Environment Variables section:
    - `NEXT_PUBLIC_SUPABASE_URL`: Your Supabase Project URL.
    - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`: Your Supabase publishable anonymous key.
+   - `SUPABASE_SERVICE_ROLE_KEY`: Your Supabase service_role key (secret, used for RLS bypass in server-side actions).
    - `GEMINI_API_KEY`: Your Google Gemini API Key.
-   - `SESSION_JWT_SECRET`: Secret used to sign JWT session tokens.
+   - `SESSION_JWT_SECRET` / `JWT_SECRET`: Secret used to sign JWT session tokens.
 4. **Deploy**: Vercel will automatically run the build command (`prisma generate && next build`) and deploy the application.
 
 ---
