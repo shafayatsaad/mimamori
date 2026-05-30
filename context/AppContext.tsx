@@ -750,18 +750,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addIntakeLog = async (amount: number): Promise<void> => {
     const timestamp = new Date().toISOString();
     const date = timestamp.slice(0, 10); // YYYY-MM-DD
+    const localId = `local-${Math.random().toString(36).substr(2, 9)}-${Date.now()}`;
+    const localLog: IntakeLog = {
+      id: localId,
+      amount,
+      timestamp,
+      date
+    };
+
+    // Optimistically update the UI/local state immediately (Req 33.3 fallback to localStorage)
+    setIntakeLogs(prev => [...prev, localLog]);
+
     try {
       const res = await fetch('/api/hydration', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: patientEmail, log: { amount, timestamp } })
+        body: JSON.stringify({ email: patientEmail || 'demo@mimamori.ai', log: { amount, timestamp } })
       });
       const data = await res.json();
       if (res.ok && data.log) {
-        setIntakeLogs(prev => [...prev, data.log]);
+        // Swap out the local temporary entry with the confirmed database log
+        setIntakeLogs(prev => prev.map(l => l.id === localId ? data.log : l));
+      } else {
+        console.warn('Server failed to record hydration log, retaining local/offline entry:', data.error || 'Unknown error');
       }
     } catch (err) {
-      console.error('Failed to add intake log:', err);
+      console.error('Failed to sync hydration log with server, retaining local/offline entry:', err);
     }
   };
 
