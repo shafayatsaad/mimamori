@@ -1,6 +1,14 @@
+import { Pool } from 'pg';
+import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../app/generated/prisma/client';
 
-const prisma = new PrismaClient();
+const connectionString =
+  process.env.POSTGRES_PRISMA_URL ||
+  process.env.POSTGRES_URL_NON_POOLING ||
+  '';
+const pool = new Pool({ connectionString, ssl: { rejectUnauthorized: false } });
+const adapter = new PrismaPg(pool);
+const prisma = new PrismaClient({ adapter });
 
 const defaultPermissions = [
   { name: 'Diary', description: 'Access to patient diary entries' },
