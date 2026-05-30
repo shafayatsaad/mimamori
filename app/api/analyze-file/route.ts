@@ -333,12 +333,12 @@ Please review the patient dashboard immediately.
       }
 
       // --- Validate entity confidence and dosage in response ---
-      const validatedBiomarkers = (parsedData.biomarkers || biomarkers).map((b: any) => ({
+      const validatedBiomarkers = (parsedData.biomarkers || []).map((b: any) => ({
         ...b,
         status: b.status === 'Normal' ? 'Status not determined' : (b.status || 'Status not determined'),
       }));
 
-      const validatedMedications = (parsedData.medications || medications).map((m: any) => {
+      const validatedMedications = (parsedData.medications || []).map((m: any) => {
         const dosage = m.dosage || 'Unknown';
         return {
           ...m,
