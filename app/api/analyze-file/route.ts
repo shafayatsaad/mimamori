@@ -30,9 +30,9 @@ export async function POST(req: NextRequest) {
   }
   const userEmail = authResult.user.sub;
 
-  // --- Rate limiting: 5 req/min per user ---
+  // --- Rate limiting: 30 req/min per user ---
   const rateCheck = checkRateLimit(`analyze-file:${userEmail}`, {
-    maxRequests: 5,
+    maxRequests: 30,
     windowMs: 60_000,
   });
   if (!rateCheck.allowed) {
