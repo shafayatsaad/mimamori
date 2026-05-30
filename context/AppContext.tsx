@@ -300,7 +300,34 @@ export function AppProvider({ children }: { children: ReactNode }) {
             setIsDbSynced(true);
           }
         } else {
+          // No active session! Clear the context's memory so we don't present stale UI
+          setCurrentUserType(null);
+          setPatientEmail(null);
+          setCaregivers([]);
+          setDocuments([]);
+          setLogs([]);
+          setInvitations([]);
+          setAppointments([]);
+          setPatientProfile({ name: '', email: '', phone: '', dateOfBirth: '', gender: '', bloodType: '', conditions: [], allergies: [] });
           setIsDbSynced(true);
+
+          // Clear local storage too to prevent showing fake state
+          localStorage.removeItem(storageKey('caregivers'));
+          localStorage.removeItem(storageKey('docs'));
+          localStorage.removeItem(storageKey('logs'));
+          localStorage.removeItem(storageKey('invites'));
+          localStorage.removeItem(storageKey('profile'));
+          localStorage.removeItem(storageKey('appointments'));
+          localStorage.removeItem(storageKey('hydration_logs'));
+          localStorage.removeItem(storageKey('settings'));
+          localStorage.removeItem(storageKey('ai_generations'));
+          localStorage.removeItem(storageKey('linked_patients'));
+          localStorage.removeItem(storageKey('custom_notes'));
+
+          // Redirect to login if currently on a dashboard page
+          if (typeof window !== 'undefined' && window.location.pathname.startsWith('/dashboard')) {
+            window.location.href = '/login';
+          }
         }
       })
       .catch(err => {
