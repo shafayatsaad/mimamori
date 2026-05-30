@@ -196,7 +196,7 @@ export function getConfig(): AppConfig {
       storageBucket: optionalEnv('SUPABASE_STORAGE_BUCKET', 'documents'),
     },
     gemini: {
-      apiKey: requireEnv('GEMINI_API_KEY', process.env.GEMINI_API_KEY),
+      apiKey: requireEnv('NVIDIA_API_KEY', process.env.NVIDIA_API_KEY || process.env.GEMINI_API_KEY),
     },
     session: {
       jwtSecret: optionalEnv('SESSION_JWT_SECRET', 'mimamori-dev-secret-change-me'),

@@ -23,20 +23,27 @@ async function checkPostgres() {
   }
 }
 
-async function checkGemini() {
-  console.log('\n--- Checking Google Gemini connection... ---');
-  const apiKey = process.env.GEMINI_API_KEY;
+async function checkNvidia() {
+  console.log('\n--- Checking Nvidia GLM 5.1 connection... ---');
+  const apiKey = process.env.NVIDIA_API_KEY || process.env.GEMINI_API_KEY;
   if (!apiKey || apiKey === 'mock-gemini-key') {
-    console.log('❌ GEMINI_API_KEY is not defined or is still the placeholder "mock-gemini-key".');
+    console.log('❌ NVIDIA_API_KEY is not defined.');
     return;
   }
   try {
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
-    const result = await model.generateContent('Respond with "OK"');
-    console.log(`✅ Google Gemini API call successful! Response: "${result.response.text().trim()}"`);
+    const OpenAI = require('openai');
+    const client = new OpenAI({
+      apiKey,
+      baseURL: 'https://integrate.api.nvidia.com/v1',
+    });
+    const result = await client.chat.completions.create({
+      model: 'z-ai/glm-5.1',
+      messages: [{ role: 'user', content: 'Respond with "OK"' }],
+      temperature: 0.1,
+    });
+    console.log(`✅ Nvidia GLM 5.1 API call successful! Response: "${result.choices[0]?.message?.content?.trim()}"`);
   } catch (error) {
-    console.log('❌ Google Gemini API call failed:', error.message);
+    console.log('❌ Nvidia GLM 5.1 API call failed:', error.message);
   }
 }
 
@@ -108,6 +115,7 @@ async function checkEnvVars() {
     'SUPABASE_SERVICE_ROLE_KEY',
     'POSTGRES_PRISMA_URL',
     'POSTGRES_URL_NON_POOLING',
+    'NVIDIA_API_KEY',
     'GEMINI_API_KEY',
     'JWT_SECRET',
     'NEXTAUTH_URL',
@@ -129,7 +137,7 @@ async function checkEnvVars() {
 async function main() {
   await checkEnvVars();
   await checkPostgres();
-  await checkGemini();
+  await checkNvidia();
   await checkSupabase();
 }
 
