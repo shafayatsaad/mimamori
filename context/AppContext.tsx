@@ -351,7 +351,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (typeof navigator !== 'undefined' && navigator.geolocation) {
         try {
           const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+              enableHighAccuracy: false,
+              timeout: 10000,
+              maximumAge: 60000
+            });
           });
           const weatherRes = await fetch(`/api/weather?lat=${position.coords.latitude}&lon=${position.coords.longitude}`);
           const weatherData = await weatherRes.json();
