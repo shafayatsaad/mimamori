@@ -15,9 +15,9 @@ export async function POST(req: NextRequest) {
   }
   const userEmail = authResult.user.sub;
 
-  // --- Rate limiting: 10 req/min per user ---
+  // --- Rate limiting: 30 req/min per user ---
   const rateCheck = checkRateLimit(`medical-reasoning:${userEmail}`, {
-    maxRequests: 10,
+    maxRequests: 30,
     windowMs: 60_000,
   });
   if (!rateCheck.allowed) {
