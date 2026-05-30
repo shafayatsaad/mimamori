@@ -166,87 +166,46 @@ export async function POST(req: NextRequest) {
     const sanitized = sanitizeForPrompt(textToAnalyze);
     textToAnalyze = sanitized.text;
 
-    // --- Comprehend Medical replaced by Gemini Entity Extraction with circuit breaker ---
-    let entities = [];
-    try {
-      entities = await callWithCircuitBreaker('gemini-medical', () =>
-        medicalAi.analyze(textToAnalyze),
-      );
-    } catch (error: unknown) {
-      if (isCircuitBreakerOpen(error)) {
-        return NextResponse.json(
-          { error: 'Service temporarily unavailable. Please try again later.' },
-          { status: 503 },
-        );
-      }
-      throw error;
-    }
-    
-    const medications: any[] = [];
-    const biomarkers: any[] = [];
-    const conditions: string[] = [];
-    
-    entities.forEach((entity: any) => {
-      const entityConfidence = entity.Score ?? 1.0;
-      const isUnverified = entityConfidence < 0.5;
+    // --- Single combined AI call: entity extraction + clinical reasoning ---
+    // This replaces the previous two-step pipeline (medicalAi.analyze + separate generateText)
+    // to halve API calls and reduce latency.
+    const combinedPrompt = `Analyze this medical document titled "${docName}". Act as a clinical assistant reviewing this for a patient.
 
-      if (entity.Category === 'MEDICATION') {
-         const dosageAttr = entity.Attributes?.find((a: any) => a.Type === 'DOSAGE');
-         const freqAttr = entity.Attributes?.find((a: any) => a.Type === 'FREQUENCY');
-         const rawDosage = dosageAttr ? dosageAttr.Text || 'Unknown' : 'Unknown';
-         const dosageValid = rawDosage !== 'Unknown' && isValidDosage(rawDosage);
-         medications.push({
-           name: entity.Text,
-           dosage: rawDosage,
-           dosageValid,
-           frequency: freqAttr ? freqAttr.Text : 'As directed',
-           verified: !isUnverified,
-           ...(isUnverified ? { status: 'Unverified' } : {}),
-         });
-      }
-      if (entity.Category === 'TEST_TREATMENT_PROCEDURE') {
-         const valAttr = entity.Attributes?.find((a: any) => a.Type === 'TEST_VALUE');
-         const unitAttr = entity.Attributes?.find((a: any) => a.Type === 'TEST_UNIT');
-         const status = isUnverified ? 'Unverified' : 'Status not determined';
-         biomarkers.push({
-           name: entity.Text,
-           result: valAttr ? valAttr.Text : 'Done',
-           unit: unitAttr ? unitAttr.Text : '',
-           range: 'N/A',
-           status,
-           verified: !isUnverified,
-         });
-      }
-      if (entity.Category === 'MEDICAL_CONDITION') {
-         if (entity.Text) conditions.push(entity.Text);
-      }
-    });
-
-    // --- Build Detailed Gemini Clinical reasoning prompt ---
-    const promptText = `Analyze this medical document titled "${docName}". Act as a clinical assistant reviewing this for a patient. Extract the actual patient name from the document. Determine the true document type (e.g., Insurance, Lab Result, Prescription, Doctor Note).
-      
 ${SYSTEM_GUARDRAIL}
 
-Raw Document Text (if extracted):
+Raw Document Text:
 ${textToAnalyze}
 
-Extracted Medical Entities:
-Medications: ${JSON.stringify(medications)}
-Biomarkers: ${JSON.stringify(biomarkers)}
-Conditions: ${JSON.stringify(conditions)}
+Perform TWO tasks in a single response:
 
-Using the document provided and the pre-extracted medical entities, return ONLY a detailed JSON object with exactly these fields:
-1. "extractedName": the patient name found in the document, or "Unknown" if not found.
-2. "actualType": the true document type based on the text.
-3. "summary": A very comprehensive clinical summary in plain English explaining what this document is, what findings it contains, and what it means for the patient. Include details leveraging the Comprehend Medical entities provided.
-4. "precautions": A concise explanation of what the patient must watch out for, potential side effects of listed medications, or follow-up instructions given. Include insights from the generated conditions. (String)
-5. "biomarkers": An array of extracted metrics if present, each with { "name": string, "result": string, "unit": string, "range": string, "status": "High" | "Low" | "Attention" | "Unverified" | "Status not determined" }. Otherwise empty array.
-6. "medications": An array of medications found or prescribed, each with { "name": string, "dosage": string, "frequency": string }. Otherwise empty array.`;
+TASK 1 - ENTITY EXTRACTION: Extract medical entities from the text:
+- MEDICATION entities with dosage and frequency attributes
+- TEST_TREATMENT_PROCEDURE entities with test values and units
+- MEDICAL_CONDITION entities
+
+TASK 2 - CLINICAL ANALYSIS: Using the extracted entities and the raw text, provide:
+- The patient name found in the document
+- The true document type (e.g., Insurance, Lab Report, Prescription, Doctor Note)
+- A comprehensive clinical summary in plain English
+- Precautions, side effects, and follow-up instructions
+- Structured biomarker and medication arrays
+
+Return ONLY a JSON object with these exact fields:
+{
+  "extractedName": "patient name or Unknown",
+  "actualType": "document type",
+  "summary": "comprehensive clinical summary",
+  "precautions": "precautions and follow-up",
+  "biomarkers": [{"name": "string", "result": "string", "unit": "string", "range": "string", "status": "High|Low|Attention|Unverified|Status not determined"}],
+  "medications": [{"name": "string", "dosage": "string", "frequency": "string"}]
+}
+
+Do not include markdown formatting or backticks around the JSON.`;
 
     let responseText = '';
     try {
       responseText = await callWithCircuitBreaker('gemini', () =>
-        generateText(promptText, 'orchestrator'),
+        generateText(combinedPrompt, 'orchestrator', 0.1, 3072),
       );
     } catch (err: unknown) {
       if (isCircuitBreakerOpen(err)) {
