@@ -22,7 +22,7 @@ interface PendingUpload {
 }
 
 export default function DocumentVaultPage() {
-  const { documents, addDocument, removeDocument, updateDocument, patientProfile, fetchAlerts } = useAppContext();
+  const { documents, addDocument, removeDocument, updateDocument, patientProfile, fetchAlerts, logout } = useAppContext();
   const [isUploading, setIsUploading] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -118,6 +118,13 @@ export default function DocumentVaultPage() {
           method: 'POST',
           body: formData
         });
+        
+        if (uploadRes.status === 401) {
+          logout();
+          window.location.href = '/login';
+          return;
+        }
+
         const uploadData = await uploadRes.json();
 
         if (!uploadRes.ok || !uploadData.fileUrl) {
