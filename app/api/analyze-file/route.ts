@@ -357,7 +357,7 @@ Please review the patient dashboard immediately.
         ...(hasCriticalKeywords ? { criticalFinding: true, criticalFindingMessage: 'Critical finding — review with your care team immediately' } : {}),
       });
     } catch (_parseErr) {
-      console.error('Failed to parse Gemini JSON output:', cleanText);
+      console.error('Failed to parse AI JSON output:', cleanText);
       return NextResponse.json(
         { error: 'AI response format invalid' },
         { status: 502 },
@@ -365,9 +365,9 @@ Please review the patient dashboard immediately.
     }
   } catch (error: unknown) {
     const errObj = error as { name?: string; message?: string; stack?: string };
-    console.error('Error generating document analysis via Gemini:', errObj?.name, errObj?.message, errObj?.stack?.slice(0, 300));
+    console.error('Error generating document analysis via AI service:', errObj?.name, errObj?.message, errObj?.stack?.slice(0, 300));
     return NextResponse.json({ 
-      error: `Analysis failed: ${errObj?.name || 'Unknown'} — ${errObj?.message || 'Check Gemini configuration.'}`,
+      error: `Analysis failed: ${errObj?.name || 'Unknown'} — ${errObj?.message || 'Check AI service configuration.'}`,
     }, { status: 500 });
   }
 }
