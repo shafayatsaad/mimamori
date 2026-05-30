@@ -113,9 +113,19 @@ export async function POST(req: NextRequest) {
                  console.warn('[analyze-file] DOCX text extraction returned empty for:', docName);
                }
            } else {
-               base64Data = Buffer.from(byteArray).toString('base64');
-               mimeType = 'pdf';
-           }
+                // It's a PDF. Try extracting text locally using pdf-parse!
+                try {
+                  const fileBuffer = Buffer.from(byteArray);
+                  const pdfParse = require('pdf-parse');
+                  const parsed = await pdfParse(fileBuffer);
+                  textractText = parsed.text || '';
+                  console.log(`[analyze-file] Extracted ${textractText.length} chars from PDF locally.`);
+                } catch (pdfErr) {
+                  console.error('Local PDF parsing failed:', (pdfErr as Error).message);
+                }
+                base64Data = Buffer.from(byteArray).toString('base64');
+                mimeType = 'pdf';
+            }
            
            // Run Gemini Vision OCR for images and PDFs (replacing Textract)
            if (!isTextFile && !textractText.trim()) {
@@ -124,7 +134,13 @@ export async function POST(req: NextRequest) {
                const fileBuffer = Buffer.from(byteArray);
                const actualMime = isImage ? `image/${mimeType === 'jpeg' ? 'jpeg' : mimeType}` : 'application/pdf';
                
-               const ocrResult = await generateWithFile(promptOCR, fileBuffer, actualMime, 'orchestrator');
+               let ocrResult = '';
+               if (actualMime === 'application/pdf') {
+                 console.warn('[analyze-file] Scanned PDFs are not supported directly by the vision model. Skipping vision OCR.');
+                 ocrFailed = true;
+               } else {
+                 ocrResult = await generateWithFile(promptOCR, fileBuffer, actualMime, 'orchestrator');
+               }
                textractText = ocrResult || '';
 
                if (!textractText.trim()) {
