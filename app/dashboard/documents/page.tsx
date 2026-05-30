@@ -18,6 +18,7 @@ interface PendingUpload {
   selectedCategory: string;
   confidence: number;
   showLowConfidence: boolean;
+  analysis?: any;
 }
 
 export default function DocumentVaultPage() {
@@ -104,6 +105,7 @@ export default function DocumentVaultPage() {
       const displayResult = getDisplayCategory(classificationResult);
 
       let fileUrl = '';
+      let analysisResult: any = null;
       try {
         // Server-side proxy upload (no CORS needed)
         const formData = new FormData();
@@ -123,6 +125,21 @@ export default function DocumentVaultPage() {
         }
         
         fileUrl = uploadData.fileUrl;
+
+        // Pre-emptively analyze the document via AI immediately!
+        try {
+          const analyzeRes = await fetch('/api/analyze-file', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ docName: file.name, fileUrl })
+          });
+          if (analyzeRes.ok) {
+            analysisResult = await analyzeRes.json();
+            console.log(`[documents] Pre-emptive AI analysis succeeded for: ${file.name}`);
+          }
+        } catch (err) {
+          console.error("Background file analysis failed:", err);
+        }
       } catch (err) {
         console.error("S3 Upload Error:", err);
         const message = err instanceof Error ? err.message : 'Upload failed';
@@ -135,10 +152,11 @@ export default function DocumentVaultPage() {
         name: file.name,
         size: (file.size / (1024 * 1024)).toFixed(1) + ' MB',
         fileUrl,
-        suggestedCategory: docType,
-        selectedCategory: displayResult.displayCategory,
-        confidence: classificationResult.confidence,
-        showLowConfidence: displayResult.showLowConfidence,
+        suggestedCategory: analysisResult?.actualType || docType,
+        selectedCategory: analysisResult?.actualType || displayResult.displayCategory,
+        confidence: analysisResult ? 0.98 : classificationResult.confidence,
+        showLowConfidence: analysisResult ? false : displayResult.showLowConfidence,
+        analysis: analysisResult || null,
       });
     }
 
@@ -156,6 +174,7 @@ export default function DocumentVaultPage() {
       type: pending.selectedCategory,
       size: pending.size,
       fileUrl: pending.fileUrl,
+      analysis: pending.analysis || null,
     });
     setPendingUploads(prev => prev.filter((_, i) => i !== index));
     setShowSuccessToast(true);
@@ -171,6 +190,7 @@ export default function DocumentVaultPage() {
         type: pending.selectedCategory,
         size: pending.size,
         fileUrl: pending.fileUrl,
+        analysis: pending.analysis || null,
       });
     }
     setPendingUploads([]);
