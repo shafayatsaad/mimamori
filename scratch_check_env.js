@@ -11,11 +11,7 @@ async function checkPostgres() {
   }
   console.log(`Connecting to: ${url.replace(/:[^:@]+@/, ':****@')}`);
   const prisma = new PrismaClient({
-    datasources: {
-      db: {
-        url: url
-      }
-    }
+    datasourceUrl: url
   });
   try {
     await prisma.$connect();
