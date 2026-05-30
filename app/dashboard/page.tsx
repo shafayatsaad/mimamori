@@ -10,7 +10,7 @@ import { fetchWithRetry } from '@/lib/fetch-with-retry';
 import { storageKey } from '@/lib/storage-keys';
 
 export default function DashboardHomePage() {
-  const { currentUserType, currentCaregiverId, caregivers, patientProfile, patientEmail, logs, documents, syncFailed, invitations, hydrationTemperature, hydrationGoal, locationError, aiGenerations, setAIGeneration, getGenerationTriggerHash } = useAppContext();
+  const { currentUserType, currentCaregiverId, caregivers, patientProfile, patientEmail, logs, documents, syncFailed, invitations, hydrationTemperature, hydrationGoal, locationError, aiGenerations, setAIGeneration, getGenerationTriggerHash, cityPresets, fetchWeatherByLocation } = useAppContext();
   const t = useTranslations('dashboard');
   const todayKey = storageKey(`medTaken_${new Date().toISOString().slice(0, 10)}`);
   const [medTaken, setMedTaken] = useState(() => {
@@ -24,6 +24,7 @@ export default function DashboardHomePage() {
   const [aiInsight, setAiInsight] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [insightError, setInsightError] = useState(false);
+  const [insightErrorMsg, setInsightErrorMsg] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [sharingInsight, setSharingInsight] = useState(false);
   const [checkingIn, setCheckingIn] = useState(false);
@@ -144,6 +145,7 @@ export default function DashboardHomePage() {
       insightFetchedRef.current = true;
       setIsGenerating(true);
       setInsightError(false);
+      setInsightErrorMsg(null);
       try {
         const analyzedDocs = documents.filter(d => d.analysis).map(d => ({ name: d.name, analysis: d.analysis }));
 
@@ -162,12 +164,14 @@ export default function DashboardHomePage() {
           setAIGeneration('default-analysis', data.insight, currentHash);
         } else {
           setInsightError(true);
+          setInsightErrorMsg(data.error || 'Failed to generate AI content');
           // Allow retry on next mount if it failed
           insightFetchedRef.current = false;
         }
       } catch (err) {
         console.error('Failed to parse AI medical reasoning', err);
         setInsightError(true);
+        setInsightErrorMsg((err as Error).message || 'Failed to generate AI content');
         // Allow retry on next mount if it failed
         insightFetchedRef.current = false;
       } finally {
@@ -277,8 +281,8 @@ export default function DashboardHomePage() {
                ))}
              </div>
           ) : (
-             <span className={isCaregiver ? 'text-orange-800/60' : 'text-gray-400 font-medium'}>
-               {t('insightError')}
+             <span className={isCaregiver ? 'text-orange-800/60' : 'text-red-500 font-medium text-base md:text-lg block border border-red-100 bg-red-50/50 rounded-2xl p-4 md:p-6'}>
+               ⚠️ {insightErrorMsg || t('insightError')}
              </span>
           )}
         </h2>
@@ -482,6 +486,22 @@ export default function DashboardHomePage() {
               </p>
             ) : (
               <p className="text-sm font-medium text-gray-400 animate-pulse">Loading weather data...</p>
+            )}
+
+            {/* City Preset Selection (Allows manual location override/fallback) */}
+            {cityPresets && cityPresets.length > 0 && (
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Select Location:</span>
+                {cityPresets.map((city) => (
+                  <button
+                    key={city.name}
+                    onClick={() => fetchWeatherByLocation(city.lat, city.lon)}
+                    className="bg-gray-50 hover:bg-sky-50 hover:text-sky-600 text-gray-600 px-3 py-1 rounded-full text-xs font-bold border border-gray-200/60 hover:border-sky-100 transition-all shadow-sm"
+                  >
+                    {city.name}
+                  </button>
+                ))}
+              </div>
             )}
           </div>
         </div>

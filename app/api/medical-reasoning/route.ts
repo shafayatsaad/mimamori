@@ -148,6 +148,17 @@ export async function POST(req: NextRequest) {
           { status: 503 },
         );
       }
+
+      // Handle Gemini rate limit / quota exceeded (429)
+      if (
+        (error as any).status === 429 ||
+        (err.message && (err.message.includes('429') || err.message.includes('quota') || err.message.includes('Quota exceeded') || err.message.includes('Too Many Requests')))
+      ) {
+        return NextResponse.json(
+          { error: 'Google Gemini API quota exceeded (429 Too Many Requests). Please check your Google AI Studio plan & billing, or try again later.', insight: null },
+          { status: 429 },
+        );
+      }
     }
 
     const msg =
