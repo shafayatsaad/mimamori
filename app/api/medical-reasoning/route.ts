@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
       extraContext: (extraContext || '') + notesContext,
     });
 
-    // --- Wrap Gemini call with circuit breaker ---
+    // --- Wrap AI call with circuit breaker ---
     const responseText = await callWithCircuitBreaker('gemini', () =>
       generateText(promptText, 'orchestrator'),
     );
@@ -138,24 +138,24 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Handle Gemini API Key issues / auth issues
+      // Handle Nvidia API Key issues / auth issues
       if (
         err.name === 'APIKeyError' || 
         (err.message && (err.message.includes('API key') || err.message.includes('invalid key')))
       ) {
         return NextResponse.json(
-          { error: 'AI service is not configured. Please set up GEMINI_API_KEY.', insight: null },
+          { error: 'AI service is not configured. Please set up NVIDIA_API_KEY.', insight: null },
           { status: 503 },
         );
       }
 
-      // Handle Gemini rate limit / quota exceeded (429)
+      // Handle AI rate limit / quota exceeded (429)
       if (
         (error as any).status === 429 ||
         (err.message && (err.message.includes('429') || err.message.includes('quota') || err.message.includes('Quota exceeded') || err.message.includes('Too Many Requests')))
       ) {
         return NextResponse.json(
-          { error: 'Google Gemini API quota exceeded (429 Too Many Requests). Please check your Google AI Studio plan & billing, or try again later.', insight: null },
+          { error: 'Nvidia API quota exceeded (429 Too Many Requests). Please check your Nvidia Developer plan & billing, or try again later.', insight: null },
           { status: 429 },
         );
       }
@@ -165,7 +165,7 @@ export async function POST(req: NextRequest) {
       error && typeof error === 'object' && 'message' in error
         ? String((error as { message?: string }).message)
         : 'Unknown error';
-    console.error('Error invoking Gemini reasoning route:', msg);
+    console.error('Error invoking Nvidia reasoning route:', msg);
     return NextResponse.json(
       { error: 'Failed to generate AI content. Please try again later.', details: msg },
       { status: 500 },
