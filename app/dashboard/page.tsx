@@ -28,6 +28,35 @@ export default function DashboardHomePage() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [sharingInsight, setSharingInsight] = useState(false);
   const [checkingIn, setCheckingIn] = useState(false);
+  const [detectingLocation, setDetectingLocation] = useState(false);
+  const [geoError, setGeoError] = useState<string | null>(null);
+
+  const handleAutoDetectLocation = async () => {
+    if (typeof navigator !== 'undefined' && navigator.geolocation) {
+      setDetectingLocation(true);
+      setGeoError(null);
+      try {
+        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 });
+        });
+        await fetchWeatherByLocation(position.coords.latitude, position.coords.longitude);
+        showToast('Location updated successfully!');
+      } catch (err: any) {
+        console.error('Geolocation failed in dashboard:', err);
+        let errMsg = 'Location permission denied or timed out.';
+        if (err.code === 1) errMsg = 'Location permission denied. Please allow location access in your URL bar.';
+        if (err.code === 2) errMsg = 'Location position is unavailable.';
+        if (err.code === 3) errMsg = 'Location request timed out. Please try again.';
+        setGeoError(errMsg);
+        showToast(errMsg);
+      } finally {
+        setDetectingLocation(false);
+      }
+    } else {
+      setGeoError('Geolocation is not supported by your browser.');
+      showToast('Geolocation is not supported.');
+    }
+  };
 
 
   // Combine all log sources: text, transcript, probes, and probe answers
@@ -489,19 +518,33 @@ export default function DashboardHomePage() {
             )}
 
             {/* City Preset Selection (Allows manual location override/fallback) */}
-            {cityPresets && cityPresets.length > 0 && (
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Select Location:</span>
-                {cityPresets.map((city) => (
-                  <button
-                    key={city.name}
-                    onClick={() => fetchWeatherByLocation(city.lat, city.lon)}
-                    className="bg-gray-50 hover:bg-sky-50 hover:text-sky-600 text-gray-600 px-3 py-1 rounded-full text-xs font-bold border border-gray-200/60 hover:border-sky-100 transition-all shadow-sm"
-                  >
-                    {city.name}
-                  </button>
-                ))}
-              </div>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Select Location:</span>
+              <button
+                onClick={handleAutoDetectLocation}
+                disabled={detectingLocation}
+                className="bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 py-1 rounded-full text-xs font-bold border border-blue-100/60 hover:border-blue-200 transition-all shadow-sm flex items-center gap-1 disabled:opacity-50"
+              >
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2a8 8 0 0 0-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 0 0-8-8z" />
+                  <circle cx="12" cy="10" r="3" />
+                </svg>
+                {detectingLocation ? 'Detecting...' : 'Auto-Detect'}
+              </button>
+              {cityPresets && cityPresets.length > 0 && cityPresets.map((city) => (
+                <button
+                  key={city.name}
+                  onClick={() => fetchWeatherByLocation(city.lat, city.lon)}
+                  className="bg-gray-50 hover:bg-sky-50 hover:text-sky-600 text-gray-600 px-3 py-1 rounded-full text-xs font-bold border border-gray-200/60 hover:border-sky-100 transition-all shadow-sm"
+                >
+                  {city.name}
+                </button>
+              ))}
+            </div>
+            {geoError && (
+              <p className="text-red-500 text-[9px] font-bold mt-2 bg-red-50 border border-red-100 rounded-lg px-2 py-1 max-w-max">
+                ⚠️ {geoError}
+              </p>
             )}
           </div>
         </div>
