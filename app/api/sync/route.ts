@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required payload: state' }, { status: 400 });
     }
 
-    const promises: Promise<any>[] = [];
+    const promises: PromiseLike<any>[] = [];
 
     // 1. Upsert Profile (Main Record) in user_state table
     promises.push(
