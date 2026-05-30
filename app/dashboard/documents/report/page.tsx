@@ -11,8 +11,8 @@ function LabReportAnalysisContent() {
   const { documents, patientProfile, updateDocument, addLog } = useAppContext();
   const doc = documents.find(d => d.id === id) || { id: 'fallback', name: 'Comprehensive Metabolic Panel', date: 'Oct 24, 2023', type: 'Lab Result', size: '1.2 MB', fileUrl: '', status: 'Analyzed' } as any;
   
-  const isS3 = doc.fileUrl && doc.fileUrl.startsWith('s3://');
-  const displayUrl = isS3 ? `/api/download?url=${encodeURIComponent(doc.fileUrl)}` : doc.fileUrl;
+  const isSupabaseStorage = doc.fileUrl && (doc.fileUrl.startsWith('s3://') || doc.fileUrl.startsWith('supabase://'));
+  const displayUrl = isSupabaseStorage ? `/api/download?url=${encodeURIComponent(doc.fileUrl)}` : doc.fileUrl;
 
   const fileName = doc.name.toLowerCase();
   const isPdf = fileName.endsWith('.pdf');
