@@ -37,7 +37,11 @@ export default function DashboardHomePage() {
       setGeoError(null);
       try {
         const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 });
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: false,
+            timeout: 30000,
+            maximumAge: 60000
+          });
         });
         await fetchWeatherByLocation(position.coords.latitude, position.coords.longitude);
         showToast('Location updated successfully!');
