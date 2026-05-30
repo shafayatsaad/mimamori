@@ -104,10 +104,11 @@ export function getSessionCookieOptions(): {
   maxAge: number;
 } {
   const { expirySeconds } = getConfig().session;
+  const isProd = process.env.NODE_ENV === 'production';
   return {
     name: COOKIE_NAME,
     httpOnly: true,
-    secure: true,
+    secure: isProd,
     sameSite: "strict",
     path: "/",
     maxAge: expirySeconds,
@@ -119,9 +120,10 @@ export function getSessionCookieOptions(): {
  * empty value with an immediate expiry.
  */
 export function clearSession(response: NextResponse): NextResponse {
+  const isProd = process.env.NODE_ENV === 'production';
   response.cookies.set(COOKIE_NAME, "", {
     httpOnly: true,
-    secure: true,
+    secure: isProd,
     sameSite: "strict",
     path: "/",
     maxAge: 0,
