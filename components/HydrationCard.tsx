@@ -36,6 +36,7 @@ export default function HydrationCard() {
   const [expanded, setExpanded] = useState(false);
   const [isEditingTotal, setIsEditingTotal] = useState(false);
   const [editedTotal, setEditedTotal] = useState('');
+  const [geoError, setGeoError] = useState<string | null>(null);
 
   const { logCount } = computeHydrationAggregates(intakeLogs);
   const progressRatio = calculateProgressRatio(totalConsumed, hydrationGoal);
@@ -77,15 +78,23 @@ export default function HydrationCard() {
   const handleRetryGeolocation = async () => {
     if (typeof navigator !== 'undefined' && navigator.geolocation) {
       setIsSubmittingLocation(true);
+      setGeoError(null);
       try {
         const position = await new Promise<GeolocationPosition>((resolve, reject) => {
           navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
         });
         await fetchWeatherByLocation(position.coords.latitude, position.coords.longitude);
-      } catch (_err) {
-        // Still denied
+      } catch (err: any) {
+        console.error('Geolocation failed:', err);
+        let errMsg = 'Location permission denied or timed out.';
+        if (err.code === 1) errMsg = 'Location permission denied by browser settings. Please allow location access in your URL bar.';
+        if (err.code === 2) errMsg = 'Location position is unavailable.';
+        if (err.code === 3) errMsg = 'Location request timed out. Please try again.';
+        setGeoError(errMsg);
       }
       setIsSubmittingLocation(false);
+    } else {
+      setGeoError('Geolocation is not supported by your browser.');
     }
   };
 
@@ -135,6 +144,12 @@ export default function HydrationCard() {
             </button>
           ))}
         </div>
+
+        {geoError && (
+          <p className="text-red-500 text-[10px] font-bold mb-3 text-center bg-red-50 border border-red-100 rounded-lg p-2">
+            ⚠️ {geoError}
+          </p>
+        )}
 
         <button
           onClick={handleRetryGeolocation}
